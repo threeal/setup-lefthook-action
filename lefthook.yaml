@@ -1,0 +1,19 @@
+pre-commit:
+  piped: true
+  fail_on_changes: always
+  fail_on_changes_diff: true
+  jobs:
+    - name: install dependencies
+      run: pnpm install
+
+    - name: fix formatting
+      run: pnpm prettier --write .
+
+    - name: fix lint
+      run: pnpm eslint --fix
+
+    - name: check types
+      run: pnpm tsc
+
+    - name: build action
+      run: pnpm rollup -c
