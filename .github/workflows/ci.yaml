@@ -12,10 +12,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6.0.2
 
-      - name: Install Lefthook
-        run: |
-          curl -1sLf 'https://dl.cloudsmith.io/public/evilmartians/lefthook/setup.deb.sh' | sudo -E bash
-          sudo apt install lefthook
+      - name: Setup Lefthook
+        uses: ./
 
       - name: Setup pnpm
         uses: threeal/setup-pnpm-action@v1.0.0
@@ -30,26 +28,19 @@ jobs:
 
   test:
     name: Test
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v6.0.2
         with:
-          path: mkdir-action
+          path: setup-lefthook-action
           sparse-checkout: |
             action.yml
             dist
           sparse-checkout-cone-mode: false
 
-      - name: Create directory
-        uses: ./mkdir-action
-        with:
-          path: parent/child
+      - name: Setup Lefthook
+        uses: ./setup-lefthook-action
 
-      - name: Check directory
-        shell: bash
-        run: test -d parent/child
+      - name: Check Lefthook
+        run: lefthook --version

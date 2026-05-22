@@ -1,37 +1,48 @@
-import { access, mkdir, rm, writeFile } from "node:fs/promises";
-import path from "node:path";
-import { afterAll, beforeEach, expect, it, vi } from "vitest";
+import { addPath, logError, logInfo } from "gha-utils";
+import { beforeEach, expect, test, vi } from "vitest";
+import { downloadLefthook, fetchLatestVersion } from "./lefthook.js";
 
-vi.mock("gha-utils");
+vi.mock("gha-utils", () => ({
+  addPath: vi.fn(),
+  logError: vi.fn(),
+  logInfo: vi.fn(),
+}));
 
-const tmpDir = path.resolve(import.meta.dirname, ".main.test.tmp");
+vi.mock("node:os", () => ({
+  tmpdir: vi.fn().mockReturnValue("/tmp"),
+}));
 
-beforeEach(async () => {
-  await rm(tmpDir, { recursive: true, force: true });
-  await mkdir(tmpDir);
-  process.exitCode = undefined;
+vi.mock("./lefthook.js", () => ({
+  downloadLefthook: vi.fn(),
+  fetchLatestVersion: vi.fn(),
+}));
+
+beforeEach(() => {
+  vi.mocked(fetchLatestVersion).mockResolvedValue("1.10.0");
+  vi.mocked(downloadLefthook).mockResolvedValue(undefined);
+  vi.mocked(addPath).mockResolvedValue(undefined);
   vi.resetModules();
+  process.exitCode = undefined;
 });
 
-afterAll(() => rm(tmpDir, { recursive: true, force: true }));
-
-it("should create a directory recursively", async () => {
-  const { getInput } = await import("gha-utils");
-  vi.mocked(getInput).mockReturnValue(path.join(tmpDir, "new/directory"));
-
+test("sets up Lefthook", async () => {
   await import("./main.js");
 
-  await access(path.join(tmpDir, "new/directory"));
+  expect(logInfo).toHaveBeenCalledWith("Downloading Lefthook 1.10.0...");
+  expect(downloadLefthook).toHaveBeenCalledWith(
+    "/tmp/lefthook/1.10.0",
+    "1.10.0",
+  );
+  expect(addPath).toHaveBeenCalledWith("/tmp/lefthook/1.10.0");
   expect(process.exitCode).toBeUndefined();
 });
 
-it("should fail to create a directory because a file already exists", async () => {
-  await writeFile(path.join(tmpDir, "file"), "");
-
-  const { getInput } = await import("gha-utils");
-  vi.mocked(getInput).mockReturnValue(path.join(tmpDir, "file/child"));
+test("fails when Lefthook setup fails", async () => {
+  const err = new Error("something went wrong");
+  vi.mocked(fetchLatestVersion).mockRejectedValue(err);
 
   await import("./main.js");
 
+  expect(logError).toHaveBeenCalledWith(err);
   expect(process.exitCode).toBe(1);
 });

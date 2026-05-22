@@ -2,8 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **Template notice:** This file describes the template repository itself. If you've created a project from this template, replace this content with guidance specific to your project.
-
 ## Commands
 
 ```sh
@@ -20,8 +18,16 @@ Pre-commit hooks are managed by [Lefthook](https://lefthook.dev/), set up with `
 
 ## Architecture
 
-This is a Node.js 24 GitHub Action. The action's entry point is `dist/main.bundle.mjs`, produced by Rollup bundling `src/main.ts` into a single ESM file. The `dist/` folder must be committed — CI verifies there is no git diff after building.
+This is a Node.js 24 GitHub Action that downloads and sets up the latest Lefthook binary on x64 Ubuntu runners.
 
-Source lives entirely in `src/`. The main logic uses `gha-utils` for reading action inputs (`getInput`) and writing outputs/logs. Tests use Vitest and must maintain 100% coverage (enforced in `vitest.config.ts`).
+The entry point is `dist/main.bundle.mjs`, produced by Rollup bundling `src/main.ts`. The `dist/` folder must be committed — CI verifies there is no git diff after building.
 
-The action is defined in `action.yml`, which declares inputs, outputs, and the Node.js runtime pointing to `dist/main.bundle.mjs`.
+Source files in `src/`:
+
+- `main.ts` — action entry point; fetches the latest version, computes the bin directory from `tmpdir()`, downloads Lefthook, and adds it to `PATH`
+- `lefthook.ts` — `fetchLatestVersion()` (GitHub API) and `downloadLefthook(binDir, version)` (mkdir + curl download + chmod)
+- `download.ts` — `downloadFile(url, dest)` using `curl`
+
+Tests use Vitest and must maintain 100% coverage (enforced in `vitest.config.ts`). `download.test.ts` and `lefthook.test.ts` use real network calls; `main.test.ts` is a unit test with mocks.
+
+The action is defined in `action.yml` with no inputs — it always installs the latest version.
