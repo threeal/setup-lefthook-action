@@ -1,37 +1,50 @@
-import { access, mkdir, rm, writeFile } from "node:fs/promises";
-import path from "node:path";
-import { afterAll, beforeEach, expect, it, vi } from "vitest";
+import { addPath, logError, logInfo } from "gha-utils";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { downloadLefthook, fetchLatestVersion } from "./lefthook.js";
 
-vi.mock("gha-utils");
+vi.mock("gha-utils", () => ({
+  addPath: vi.fn(),
+  logError: vi.fn(),
+  logInfo: vi.fn(),
+}));
 
-const tmpDir = path.resolve(import.meta.dirname, ".main.test.tmp");
+vi.mock("node:os", () => ({
+  tmpdir: vi.fn().mockReturnValue("/tmp"),
+}));
 
-beforeEach(async () => {
-  await rm(tmpDir, { recursive: true, force: true });
-  await mkdir(tmpDir);
-  process.exitCode = undefined;
-  vi.resetModules();
-});
+vi.mock("./lefthook.js", () => ({
+  downloadLefthook: vi.fn(),
+  fetchLatestVersion: vi.fn(),
+}));
 
-afterAll(() => rm(tmpDir, { recursive: true, force: true }));
+describe("main", () => {
+  beforeEach(() => {
+    vi.mocked(fetchLatestVersion).mockResolvedValue("1.10.0");
+    vi.mocked(downloadLefthook).mockResolvedValue(undefined);
+    vi.mocked(addPath).mockResolvedValue(undefined);
+    vi.resetModules();
+    process.exitCode = undefined;
+  });
 
-it("should create a directory recursively", async () => {
-  const { getInput } = await import("gha-utils");
-  vi.mocked(getInput).mockReturnValue(path.join(tmpDir, "new/directory"));
+  it("should set up Lefthook", async () => {
+    await import("./main.js");
 
-  await import("./main.js");
+    expect(logInfo).toHaveBeenCalledWith("Downloading Lefthook 1.10.0...");
+    expect(downloadLefthook).toHaveBeenCalledWith(
+      "/tmp/lefthook/1.10.0",
+      "1.10.0",
+    );
+    expect(addPath).toHaveBeenCalledWith("/tmp/lefthook/1.10.0");
+    expect(process.exitCode).toBeUndefined();
+  });
 
-  await access(path.join(tmpDir, "new/directory"));
-  expect(process.exitCode).toBeUndefined();
-});
+  it("should fail when Lefthook setup fails", async () => {
+    const err = new Error("something went wrong");
+    vi.mocked(fetchLatestVersion).mockRejectedValue(err);
 
-it("should fail to create a directory because a file already exists", async () => {
-  await writeFile(path.join(tmpDir, "file"), "");
+    await import("./main.js");
 
-  const { getInput } = await import("gha-utils");
-  vi.mocked(getInput).mockReturnValue(path.join(tmpDir, "file/child"));
-
-  await import("./main.js");
-
-  expect(process.exitCode).toBe(1);
+    expect(logError).toHaveBeenCalledWith(err);
+    expect(process.exitCode).toBe(1);
+  });
 });
