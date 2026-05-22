@@ -1,5 +1,5 @@
 import { addPath, logError, logInfo } from "gha-utils";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 import { downloadLefthook, fetchLatestVersion } from "./lefthook.js";
 
 vi.mock("gha-utils", () => ({
@@ -17,34 +17,32 @@ vi.mock("./lefthook.js", () => ({
   fetchLatestVersion: vi.fn(),
 }));
 
-describe("main", () => {
-  beforeEach(() => {
-    vi.mocked(fetchLatestVersion).mockResolvedValue("1.10.0");
-    vi.mocked(downloadLefthook).mockResolvedValue(undefined);
-    vi.mocked(addPath).mockResolvedValue(undefined);
-    vi.resetModules();
-    process.exitCode = undefined;
-  });
+beforeEach(() => {
+  vi.mocked(fetchLatestVersion).mockResolvedValue("1.10.0");
+  vi.mocked(downloadLefthook).mockResolvedValue(undefined);
+  vi.mocked(addPath).mockResolvedValue(undefined);
+  vi.resetModules();
+  process.exitCode = undefined;
+});
 
-  it("should set up Lefthook", async () => {
-    await import("./main.js");
+test("sets up Lefthook", async () => {
+  await import("./main.js");
 
-    expect(logInfo).toHaveBeenCalledWith("Downloading Lefthook 1.10.0...");
-    expect(downloadLefthook).toHaveBeenCalledWith(
-      "/tmp/lefthook/1.10.0",
-      "1.10.0",
-    );
-    expect(addPath).toHaveBeenCalledWith("/tmp/lefthook/1.10.0");
-    expect(process.exitCode).toBeUndefined();
-  });
+  expect(logInfo).toHaveBeenCalledWith("Downloading Lefthook 1.10.0...");
+  expect(downloadLefthook).toHaveBeenCalledWith(
+    "/tmp/lefthook/1.10.0",
+    "1.10.0",
+  );
+  expect(addPath).toHaveBeenCalledWith("/tmp/lefthook/1.10.0");
+  expect(process.exitCode).toBeUndefined();
+});
 
-  it("should fail when Lefthook setup fails", async () => {
-    const err = new Error("something went wrong");
-    vi.mocked(fetchLatestVersion).mockRejectedValue(err);
+test("fails when Lefthook setup fails", async () => {
+  const err = new Error("something went wrong");
+  vi.mocked(fetchLatestVersion).mockRejectedValue(err);
 
-    await import("./main.js");
+  await import("./main.js");
 
-    expect(logError).toHaveBeenCalledWith(err);
-    expect(process.exitCode).toBe(1);
-  });
+  expect(logError).toHaveBeenCalledWith(err);
+  expect(process.exitCode).toBe(1);
 });

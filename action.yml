@@ -3,7 +3,7 @@ author: Alfi Maulana
 description: Set up the latest Lefthook on the runner
 branding:
   icon: anchor
-  color: black
+  color: red
 runs:
   using: node24
   main: dist/main.bundle.mjs
