@@ -74,21 +74,22 @@ async function fetchLatestVersion() {
     if (!res.ok) {
         throw new Error(`Failed to resolve latest version: ${res.statusText}`);
     }
-    const data = (await res.json());
-    return data.tag_name.replace(/^v/, "");
+    const { tag_name } = (await res.json());
+    return { tag: tag_name, version: tag_name.replace(/^v/, "") };
 }
-async function downloadLefthook(binDir, version) {
-    const binPath = path.join(binDir, "lefthook");
-    await mkdir(binDir, { recursive: true });
-    await downloadFile(`https://github.com/evilmartians/lefthook/releases/download/v${version}/lefthook_${version}_Linux_x86_64`, binPath);
-    await chmod(binPath, "755");
+function getDownloadUrl(tag, version) {
+    return `https://github.com/evilmartians/lefthook/releases/download/${tag}/lefthook_${version}_Linux_x86_64`;
 }
 
 try {
-    const version = await fetchLatestVersion();
-    const binDir = path.join(tmpdir(), "lefthook", version);
+    const binDir = path.join(tmpdir(), "lefthook");
+    const binPath = path.join(binDir, "lefthook");
+    logInfo("Fetching latest Lefthook version...");
+    const { tag, version } = await fetchLatestVersion();
     logInfo(`Downloading Lefthook ${version}...`);
-    await downloadLefthook(binDir, version);
+    await mkdir(binDir, { recursive: true });
+    await downloadFile(getDownloadUrl(tag, version), binPath);
+    await chmod(binPath, "755");
     await addPath(binDir);
 }
 catch (err) {
