@@ -19,9 +19,10 @@ vi.mock("gha-utils", () => ({
   logInfo: vi.fn(),
 }));
 
-vi.mock("node:os", () => ({
-  tmpdir: vi.fn().mockReturnValue(tmpDir),
-}));
+vi.mock("node:os", async () => {
+  const actual = await vi.importActual<typeof import("node:os")>("node:os");
+  return { ...actual, tmpdir: vi.fn().mockImplementation(() => tmpDir) };
+});
 
 beforeAll(() => mkdir(tmpDir, { recursive: true }));
 
