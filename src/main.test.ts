@@ -1,6 +1,17 @@
 import { addPath, logError, logInfo } from "gha-utils";
-import { beforeEach, expect, test, vi } from "vitest";
-import { downloadLefthook, fetchLatestVersion } from "./lefthook.js";
+import { access, mkdir, rm } from "node:fs/promises";
+import path from "node:path";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  expect,
+  test,
+  vi,
+} from "vitest";
+
+const tmpDir = path.resolve(import.meta.dirname, ".main.test.tmp");
 
 vi.mock("gha-utils", () => ({
   addPath: vi.fn(),
@@ -9,40 +20,44 @@ vi.mock("gha-utils", () => ({
 }));
 
 vi.mock("node:os", () => ({
-  tmpdir: vi.fn().mockReturnValue("/tmp"),
+  tmpdir: vi.fn().mockReturnValue(tmpDir),
 }));
 
-vi.mock("./lefthook.js", () => ({
-  downloadLefthook: vi.fn(),
-  fetchLatestVersion: vi.fn(),
-}));
+beforeAll(() => mkdir(tmpDir, { recursive: true }));
+
+afterAll(() => rm(tmpDir, { recursive: true, force: true }));
 
 beforeEach(() => {
-  vi.mocked(fetchLatestVersion).mockResolvedValue("1.10.0");
-  vi.mocked(downloadLefthook).mockResolvedValue(undefined);
-  vi.mocked(addPath).mockResolvedValue(undefined);
   vi.resetModules();
   process.exitCode = undefined;
 });
 
-test("sets up Lefthook", async () => {
+afterEach(() => vi.unstubAllGlobals());
+
+test("sets up Lefthook", { timeout: 60000 }, async () => {
   await import("./main.js");
 
-  expect(logInfo).toHaveBeenCalledWith("Downloading Lefthook 1.10.0...");
-  expect(downloadLefthook).toHaveBeenCalledWith(
-    "/tmp/lefthook/1.10.0",
-    "1.10.0",
+  expect(logInfo).toHaveBeenNthCalledWith(
+    1,
+    "Fetching latest Lefthook version...",
   );
-  expect(addPath).toHaveBeenCalledWith("/tmp/lefthook/1.10.0");
+  expect(logInfo).toHaveBeenNthCalledWith(
+    2,
+    expect.stringMatching(/^Downloading Lefthook \d+\.\d+\.\d+\.\.\.$/),
+  );
+  const binDir = vi.mocked(addPath).mock.calls[0][0];
+  await access(path.join(binDir, "lefthook"));
   expect(process.exitCode).toBeUndefined();
 });
 
 test("fails when Lefthook setup fails", async () => {
-  const err = new Error("something went wrong");
-  vi.mocked(fetchLatestVersion).mockRejectedValue(err);
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({ ok: false, statusText: "Not Found" }),
+  );
 
   await import("./main.js");
 
-  expect(logError).toHaveBeenCalledWith(err);
+  expect(logError).toHaveBeenCalledWith(expect.any(Error));
   expect(process.exitCode).toBe(1);
 });

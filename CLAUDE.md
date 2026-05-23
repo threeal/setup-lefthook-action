@@ -24,10 +24,10 @@ The entry point is `dist/main.bundle.mjs`, produced by Rollup bundling `src/main
 
 Source files in `src/`:
 
-- `main.ts` — action entry point; fetches the latest version, computes the bin directory from `tmpdir()`, downloads Lefthook, and adds it to `PATH`
-- `lefthook.ts` — `fetchLatestVersion()` (GitHub API) and `downloadLefthook(binDir, version)` (mkdir + curl download + chmod)
+- `main.ts` — action entry point; fetches the latest version, computes the bin directory from `tmpdir()`, creates the directory, downloads the binary, chmods it, and adds it to `PATH`
+- `lefthook.ts` — `fetchLatestVersion()` (GitHub API, returns `{ tag, version }`) and `getDownloadUrl(tag, version)` (pure URL builder)
 - `download.ts` — `downloadFile(url, dest)` using `curl`
 
-Tests use Vitest and must maintain 100% coverage (enforced in `vitest.config.ts`). `download.test.ts` and `lefthook.test.ts` use real network calls; `main.test.ts` is a unit test with mocks.
+Tests use Vitest and must maintain 100% coverage (enforced in `vitest.config.ts`). `download.test.ts`, `lefthook.test.ts`, and `main.test.ts` use real network calls; `main.test.ts` mocks `gha-utils` and `node:os`.
 
 The action is defined in `action.yml` with no inputs — it always installs the latest version.
