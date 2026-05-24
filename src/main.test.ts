@@ -1,6 +1,8 @@
 import { addPath, logError, logInfo } from "gha-utils";
-import { access, mkdir, rm } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
 import {
   afterAll,
   afterEach,
@@ -11,6 +13,7 @@ import {
   vi,
 } from "vitest";
 
+const execFileAsync = promisify(execFile);
 const tmpDir = path.resolve(import.meta.dirname, ".main.test.tmp");
 
 vi.mock("gha-utils", () => ({
@@ -46,9 +49,16 @@ test("sets up Lefthook", { timeout: 60000 }, async () => {
     2,
     expect.stringMatching(/^Downloading Lefthook \d+\.\d+\.\d+\.\.\.$/),
   );
+  expect(process.exitCode).toBe(undefined);
+
   const binDir = vi.mocked(addPath).mock.calls[0][0];
-  await access(path.join(binDir, "lefthook"));
-  expect(process.exitCode).toBeUndefined();
+  const binName = process.platform === "win32" ? "lefthook.exe" : "lefthook";
+  const { stdout, stderr } = await execFileAsync(path.join(binDir, binName), [
+    "--version",
+  ]);
+
+  expect(stdout.trim()).toMatch(/^lefthook version \d+\.\d+\.\d+$/);
+  expect(stderr.trim()).toBe("");
 });
 
 test("fails when Lefthook setup fails", async () => {
