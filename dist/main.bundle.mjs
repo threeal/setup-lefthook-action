@@ -1,7 +1,7 @@
 import 'node:fs';
 import fsPromises, { mkdir, chmod } from 'node:fs/promises';
-import os, { tmpdir } from 'node:os';
-import path from 'node:path';
+import os, { tmpdir, platform, arch } from 'node:os';
+import path, { join } from 'node:path';
 import { spawn } from 'node:child_process';
 
 /**
@@ -77,18 +77,47 @@ async function fetchLatestVersion() {
     const { tag_name } = (await res.json());
     return { tag: tag_name, version: tag_name.replace(/^v/, "") };
 }
-function getDownloadUrl(tag, version) {
-    return `https://github.com/evilmartians/lefthook/releases/download/${tag}/lefthook_${version}_Linux_x86_64`;
+function getBinaryName(platform) {
+    return platform === "win32" ? "lefthook.exe" : "lefthook";
+}
+function getDownloadUrl({ tag, version, platform, arch, }) {
+    let os;
+    switch (platform) {
+        case "linux":
+            os = "Linux";
+            break;
+        case "darwin":
+            os = "MacOS";
+            break;
+        case "win32":
+            os = "Windows";
+            break;
+        default:
+            throw new Error(`Unsupported platform: ${platform}`);
+    }
+    let archStr;
+    switch (arch) {
+        case "x64":
+            archStr = "x86_64";
+            break;
+        case "arm64":
+            archStr = "arm64";
+            break;
+        default:
+            throw new Error(`Unsupported arch: ${arch}`);
+    }
+    const ext = platform === "win32" ? ".exe" : "";
+    return `https://github.com/evilmartians/lefthook/releases/download/${tag}/lefthook_${version}_${os}_${archStr}${ext}`;
 }
 
 try {
-    const binDir = path.join(tmpdir(), "lefthook");
-    const binPath = path.join(binDir, "lefthook");
+    const binDir = join(tmpdir(), "lefthook");
+    const binPath = join(binDir, getBinaryName(platform()));
     logInfo("Fetching latest Lefthook version...");
     const { tag, version } = await fetchLatestVersion();
     logInfo(`Downloading Lefthook ${version}...`);
     await mkdir(binDir, { recursive: true });
-    await downloadFile(getDownloadUrl(tag, version), binPath);
+    await downloadFile(getDownloadUrl({ tag, version, platform: platform(), arch: arch() }), binPath);
     await chmod(binPath, "755");
     await addPath(binDir);
 }
