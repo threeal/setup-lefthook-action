@@ -1,4 +1,5 @@
-import { addPath, logError, logInfo } from "gha-utils";
+import { addPath } from "ghakit/io";
+import { logError, logInfo } from "ghakit/log";
 import { execFile } from "node:child_process";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
@@ -16,8 +17,11 @@ import {
 const execFileAsync = promisify(execFile);
 const tmpDir = path.resolve(import.meta.dirname, ".main.test.tmp");
 
-vi.mock("gha-utils", () => ({
+vi.mock("ghakit/io", () => ({
   addPath: vi.fn(),
+}));
+
+vi.mock("ghakit/log", () => ({
   logError: vi.fn(),
   logInfo: vi.fn(),
 }));
