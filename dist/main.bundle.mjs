@@ -1,26 +1,62 @@
-import 'node:fs';
-import fsPromises, { mkdir, chmod } from 'node:fs/promises';
-import os, { tmpdir, platform, arch } from 'node:os';
-import path, { join } from 'node:path';
 import { spawn } from 'node:child_process';
+import 'node:fs';
+import { appendFile, mkdir, chmod } from 'node:fs/promises';
+import { EOL, tmpdir, platform, arch } from 'node:os';
+import { delimiter, join } from 'node:path';
+
+function exec(command, args, opts) {
+    return new Promise((resolve, reject) => {
+        const proc = spawn(command, args, {
+            stdio: [
+                "inherit",
+                "ignore",
+                "ignore",
+            ],
+        });
+        const stdoutChunks = [];
+        if (proc.stdout !== null) {
+            proc.stdout.on("data", (chunk) => stdoutChunks.push(chunk));
+        }
+        const stderrChunks = [];
+        if (proc.stderr !== null) {
+            proc.stderr.on("data", (chunk) => stderrChunks.push(chunk));
+        }
+        proc.on("error", reject);
+        proc.on("close", (code) => {
+            if (code === 0) {
+                {
+                    resolve();
+                }
+            }
+            else {
+                reject(new Error(code !== null
+                    ? `Process "${command}" exited with code ${code.toString()}`
+                    : `Process "${command}" was terminated by a signal`));
+            }
+        });
+    });
+}
 
 /**
- * @internal
- * Retrieves the value of an environment variable.
+ * Returns whether the workflow is running in a CI environment.
  *
- * @param name - The name of the environment variable.
- * @returns The value of the environment variable.
- * @throws Error if the environment variable is not defined.
+ * @returns `true` if running in a CI environment, `false` otherwise.
  */
-function mustGetEnvironment(name) {
-    const value = process.env[name];
-    if (value === undefined) {
-        throw new Error(`the ${name} environment variable must be defined`);
-    }
-    return value;
+/**
+ * Returns the path to the file used to prepend entries to the system `PATH`
+ * from workflow commands.
+ *
+ * @returns The path to the GitHub path file, or an empty string if not set.
+ */
+function getGitHubPath() {
+    return process.env.GITHUB_PATH ?? "";
 }
+
 /**
  * Adds a system path to the environment in GitHub Actions.
+ *
+ * Prepends the path to `process.env.PATH` immediately so it is available in
+ * the current process, and appends it to the path file for subsequent steps.
  *
  * @param sysPath - The system path to add to the environment.
  * @returns A promise that resolves when the system path is successfully added.
@@ -28,10 +64,9 @@ function mustGetEnvironment(name) {
 async function addPath(sysPath) {
     process.env.PATH =
         process.env.PATH !== undefined
-            ? `${sysPath}${path.delimiter}${process.env.PATH}`
+            ? `${sysPath}${delimiter}${process.env.PATH}`
             : sysPath;
-    const filePath = mustGetEnvironment("GITHUB_PATH");
-    await fsPromises.appendFile(filePath, `${sysPath}${os.EOL}`);
+    await appendFile(getGitHubPath(), `${sysPath}${EOL}`);
 }
 
 /**
@@ -40,33 +75,18 @@ async function addPath(sysPath) {
  * @param message - The information message to log.
  */
 function logInfo(message) {
-    process.stdout.write(`${message}${os.EOL}`);
+    process.stdout.write(`${message}${EOL}`);
 }
 /**
  * Logs an error message in GitHub Actions.
  *
  * @param err - The error, which can be of any type.
+ * @param options - Optional annotation parameters to pin the message to a file location.
  */
-function logError(err) {
+function logError(err, options) {
     const message = err instanceof Error ? err.message : String(err);
-    process.stdout.write(`::error::${message}${os.EOL}`);
-}
-
-async function downloadFile(url, dest) {
-    return new Promise((resolve, reject) => {
-        const curl = spawn("curl", ["-fLSs", "--output", dest, url]);
-        const chunks = [];
-        curl.stderr.on("data", (chunk) => chunks.push(chunk));
-        curl.on("error", reject);
-        curl.on("close", (code) => {
-            if (code === 0) {
-                resolve(undefined);
-            }
-            else {
-                reject(new Error(Buffer.concat(chunks).toString().trim()));
-            }
-        });
-    });
+    const params = "";
+    process.stdout.write(`::error${params}::${message}${EOL}`);
 }
 
 async function fetchLatestVersion() {
@@ -116,8 +136,17 @@ try {
     logInfo("Fetching latest Lefthook version...");
     const { tag, version } = await fetchLatestVersion();
     logInfo(`Downloading Lefthook ${version}...`);
+    const url = getDownloadUrl({
+        tag,
+        version,
+        platform: platform(),
+        arch: arch(),
+    });
     await mkdir(binDir, { recursive: true });
-    await downloadFile(getDownloadUrl({ tag, version, platform: platform(), arch: arch() }), binPath);
+    await exec("curl", ["-fLSs", "--output", binPath, url], {
+        stdout: "silent",
+        stderr: "silent",
+    });
     await chmod(binPath, "755");
     await addPath(binDir);
 }

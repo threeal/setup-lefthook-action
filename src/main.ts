@@ -1,8 +1,9 @@
-import { addPath, logError, logInfo } from "gha-utils";
+import { exec } from "ghakit/exec";
+import { addPath } from "ghakit/io";
+import { logError, logInfo } from "ghakit/log";
 import { chmod, mkdir } from "node:fs/promises";
 import { arch, platform, tmpdir } from "node:os";
 import { join } from "node:path";
-import { downloadFile } from "./download.js";
 import {
   fetchLatestVersion,
   getBinaryName,
@@ -17,11 +18,17 @@ try {
   const { tag, version } = await fetchLatestVersion();
 
   logInfo(`Downloading Lefthook ${version}...`);
+  const url = getDownloadUrl({
+    tag,
+    version,
+    platform: platform(),
+    arch: arch(),
+  });
   await mkdir(binDir, { recursive: true });
-  await downloadFile(
-    getDownloadUrl({ tag, version, platform: platform(), arch: arch() }),
-    binPath,
-  );
+  await exec("curl", ["-fLSs", "--output", binPath, url], {
+    stdout: "silent",
+    stderr: "silent",
+  });
   await chmod(binPath, "755");
   await addPath(binDir);
 } catch (err) {
