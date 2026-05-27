@@ -14,13 +14,26 @@ describe("fetchLatestVersion", () => {
     expect(version).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
-  test("fails when version cannot be resolved", async () => {
+  test("fails when the response is not a redirect", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({ ok: false, statusText: "Not Found" }),
+      vi.fn().mockResolvedValue({ status: 200, statusText: "OK" }),
     );
     await expect(fetchLatestVersion()).rejects.toThrow(
-      "Failed to resolve latest version: Not Found",
+      "Expected 302 redirect, but got 200 (OK)",
+    );
+  });
+
+  test("fails when the location header is missing", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        status: 302,
+        headers: { get: () => null },
+      }),
+    );
+    await expect(fetchLatestVersion()).rejects.toThrow(
+      "Redirect response is missing the location header",
     );
   });
 });

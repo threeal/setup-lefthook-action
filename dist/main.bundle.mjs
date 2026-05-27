@@ -90,12 +90,17 @@ function logError(err, options) {
 }
 
 async function fetchLatestVersion() {
-    const res = await fetch("https://api.github.com/repos/evilmartians/lefthook/releases/latest");
-    if (!res.ok) {
-        throw new Error(`Failed to resolve latest version: ${res.statusText}`);
+    const res = await fetch("https://github.com/evilmartians/lefthook/releases/latest", { redirect: "manual" });
+    if (res.status !== 302) {
+        throw new Error(`Expected 302 redirect, but got ${res.status.toString()} (${res.statusText})`);
     }
-    const { tag_name } = (await res.json());
-    return { tag: tag_name, version: tag_name.replace(/^v/, "") };
+    const location = res.headers.get("location");
+    if (!location) {
+        throw new Error("Redirect response is missing the location header");
+    }
+    const tag = location.slice(location.lastIndexOf("/") + 1);
+    const version = tag.replace(/^v/, "");
+    return { tag, version };
 }
 function getBinaryName(platform) {
     return platform === "win32" ? "lefthook.exe" : "lefthook";
