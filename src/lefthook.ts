@@ -3,13 +3,21 @@ export async function fetchLatestVersion(): Promise<{
   version: string;
 }> {
   const res = await fetch(
-    "https://api.github.com/repos/evilmartians/lefthook/releases/latest",
+    "https://github.com/evilmartians/lefthook/releases/latest",
+    { redirect: "manual" },
   );
-  if (!res.ok) {
-    throw new Error(`Failed to resolve latest version: ${res.statusText}`);
+  if (res.status !== 302) {
+    throw new Error(
+      `Expected 302 redirect, but got ${res.status.toString()} (${res.statusText})`,
+    );
   }
-  const { tag_name } = (await res.json()) as { tag_name: string };
-  return { tag: tag_name, version: tag_name.replace(/^v/, "") };
+  const location = res.headers.get("location");
+  if (!location) {
+    throw new Error("Redirect response is missing the location header");
+  }
+  const tag = location.slice(location.lastIndexOf("/") + 1);
+  const version = tag.replace(/^v/, "");
+  return { tag, version };
 }
 
 export function getBinaryName(platform: string): string {
