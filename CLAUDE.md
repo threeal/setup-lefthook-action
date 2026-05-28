@@ -24,9 +24,10 @@ The entry point is `dist/main.bundle.mjs`, produced by Rollup bundling `src/main
 
 Source files in `src/`:
 
-- `main.ts` — action entry point; fetches the latest version, computes the bin directory from `tmpdir()`, downloads the binary, and adds it to `PATH`
-- `lefthook.ts` — `fetchLatestLefthookVersion()` (hits the GitHub releases latest URL with `redirect: "manual"`, parses the tag from the `Location` header, returns `{ tag, version }`), `getLefthookBinaryName(platform)` (returns `lefthook` or `lefthook.exe`), `getLefthookDownloadUrl({ tag, version, platform, arch })` (pure URL builder), and `downloadLefthook({ tag, version, platform, arch, outputDir })` (creates the directory, downloads the binary via `curl`, and chmods it)
+- `main.ts` — action entry point; calls `setupLefthookAction()` and handles top-level errors by logging and setting `process.exitCode = 1`
+- `action.ts` — `setupLefthookAction()` — fetches the latest version, computes the bin directory from `tmpdir()`, downloads the binary via `curl`, chmods it, and adds it to `PATH`
+- `lefthook.ts` — `fetchLatestLefthookVersion()` (hits the GitHub releases latest URL with `redirect: "manual"`, parses the tag from the `Location` header, returns `{ tag, version }`), `getLefthookBinaryName(platform)` (returns `lefthook` or `lefthook.exe`), and `getLefthookDownloadUrl({ tag, version, platform, arch })` (pure URL builder)
 
-Tests use Vitest and must maintain 100% coverage (enforced in `vitest.config.ts`). `lefthook.test.ts` uses real network calls to test all functions including the actual binary download. `main.test.ts` is fully mock-based — it mocks `./lefthook.js`, `ghakit/io`, `ghakit/log`, and `node:os` (`tmpdir`, `arch`, `platform`).
+Tests use Vitest and must maintain 100% coverage (enforced in `vitest.config.ts`). `lefthook.test.ts` tests pure functions with no network calls. `action.test.ts` mocks `fetchLatestLefthookVersion` and `ghakit/*` but performs a real binary download and verifies the downloaded binary runs correctly.
 
 The action is defined in `action.yml` with no inputs — it always installs the latest version.

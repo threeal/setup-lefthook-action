@@ -1,7 +1,3 @@
-import { exec } from "ghakit/exec";
-import { chmod, mkdir } from "node:fs/promises";
-import { join } from "node:path";
-
 export async function fetchLatestLefthookVersion(): Promise<{
   tag: string;
   version: string;
@@ -68,27 +64,4 @@ export function getLefthookDownloadUrl({
 
   const ext = platform === "win32" ? ".exe" : "";
   return `https://github.com/evilmartians/lefthook/releases/download/${tag}/lefthook_${version}_${os}_${archStr}${ext}`;
-}
-
-export async function downloadLefthook({
-  tag,
-  version,
-  platform,
-  arch,
-  outputDir,
-}: {
-  tag: string;
-  version: string;
-  platform: string;
-  arch: string;
-  outputDir: string;
-}): Promise<void> {
-  const binPath = join(outputDir, getLefthookBinaryName(platform));
-  const url = getLefthookDownloadUrl({ tag, version, platform, arch });
-  await mkdir(outputDir, { recursive: true });
-  await exec("curl", ["-fLSs", "--output", binPath, url], {
-    stdout: "silent",
-    stderr: "silent",
-  });
-  await chmod(binPath, "755");
 }
