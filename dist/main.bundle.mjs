@@ -1,40 +1,8 @@
+import { EOL, tmpdir, platform, arch } from 'node:os';
+import { spawn } from 'node:child_process';
 import 'node:fs';
 import { appendFile, mkdir, chmod } from 'node:fs/promises';
-import { EOL, tmpdir, arch, platform } from 'node:os';
 import { delimiter, join } from 'node:path';
-import { spawn } from 'node:child_process';
-
-/**
- * Returns whether the workflow is running in a CI environment.
- *
- * @returns `true` if running in a CI environment, `false` otherwise.
- */
-/**
- * Returns the path to the file used to prepend entries to the system `PATH`
- * from workflow commands.
- *
- * @returns The path to the GitHub path file, or an empty string if not set.
- */
-function getGitHubPath() {
-    return process.env.GITHUB_PATH ?? "";
-}
-
-/**
- * Adds a system path to the environment in GitHub Actions.
- *
- * Prepends the path to `process.env.PATH` immediately so it is available in
- * the current process, and appends it to the path file for subsequent steps.
- *
- * @param sysPath - The system path to add to the environment.
- * @returns A promise that resolves when the system path is successfully added.
- */
-async function addPath(sysPath) {
-    process.env.PATH =
-        process.env.PATH !== undefined
-            ? `${sysPath}${delimiter}${process.env.PATH}`
-            : sysPath;
-    await appendFile(getGitHubPath(), `${sysPath}${EOL}`);
-}
 
 /**
  * Logs an information message in GitHub Actions.
@@ -89,6 +57,38 @@ function exec(command, args, opts) {
     });
 }
 
+/**
+ * Returns whether the workflow is running in a CI environment.
+ *
+ * @returns `true` if running in a CI environment, `false` otherwise.
+ */
+/**
+ * Returns the path to the file used to prepend entries to the system `PATH`
+ * from workflow commands.
+ *
+ * @returns The path to the GitHub path file, or an empty string if not set.
+ */
+function getGitHubPath() {
+    return process.env.GITHUB_PATH ?? "";
+}
+
+/**
+ * Adds a system path to the environment in GitHub Actions.
+ *
+ * Prepends the path to `process.env.PATH` immediately so it is available in
+ * the current process, and appends it to the path file for subsequent steps.
+ *
+ * @param sysPath - The system path to add to the environment.
+ * @returns A promise that resolves when the system path is successfully added.
+ */
+async function addPath(sysPath) {
+    process.env.PATH =
+        process.env.PATH !== undefined
+            ? `${sysPath}${delimiter}${process.env.PATH}`
+            : sysPath;
+    await appendFile(getGitHubPath(), `${sysPath}${EOL}`);
+}
+
 async function fetchLatestLefthookVersion() {
     const res = await fetch("https://github.com/evilmartians/lefthook/releases/latest", { redirect: "manual" });
     if (res.status !== 302) {
@@ -134,29 +134,26 @@ function getLefthookDownloadUrl({ tag, version, platform, arch, }) {
     const ext = platform === "win32" ? ".exe" : "";
     return `https://github.com/evilmartians/lefthook/releases/download/${tag}/lefthook_${version}_${os}_${archStr}${ext}`;
 }
-async function downloadLefthook({ tag, version, platform, arch, outputDir, }) {
-    const binPath = join(outputDir, getLefthookBinaryName(platform));
-    const url = getLefthookDownloadUrl({ tag, version, platform, arch });
-    await mkdir(outputDir, { recursive: true });
-    await exec("curl", ["-fLSs", "--output", binPath, url]);
-    await chmod(binPath, "755");
-}
 
-try {
+async function setupLefthookAction() {
     const binDir = join(tmpdir(), "lefthook");
     logInfo("Fetching latest Lefthook version...");
     const { tag, version } = await fetchLatestLefthookVersion();
     logInfo(`Downloading Lefthook ${version}...`);
-    await downloadLefthook({
+    const binPath = join(binDir, getLefthookBinaryName(platform()));
+    await mkdir(binDir, { recursive: true });
+    const url = getLefthookDownloadUrl({
         tag,
         version,
         platform: platform(),
         arch: arch(),
-        outputDir: binDir,
     });
+    await exec("curl", ["-fLSs", "--output", binPath, url]);
+    await chmod(binPath, "755");
     await addPath(binDir);
 }
-catch (err) {
+
+await setupLefthookAction().catch((err) => {
     logError(err);
     process.exitCode = 1;
-}
+});

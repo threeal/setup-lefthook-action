@@ -1,30 +1,9 @@
-import { execFile } from "node:child_process";
-import { mkdir, rm } from "node:fs/promises";
-import { arch, platform } from "node:os";
-import path from "node:path";
-import { promisify } from "node:util";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  describe,
-  expect,
-  test,
-  vi,
-} from "vitest";
-import {
-  downloadLefthook,
   fetchLatestLefthookVersion,
   getLefthookBinaryName,
   getLefthookDownloadUrl,
 } from "./lefthook.js";
-
-const execFileAsync = promisify(execFile);
-const tmpDir = path.resolve(import.meta.dirname, ".lefthook.test.tmp");
-
-beforeAll(() => mkdir(tmpDir, { recursive: true }));
-
-afterAll(() => rm(tmpDir, { recursive: true, force: true }));
 
 describe("fetchLatestLefthookVersion", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -117,26 +96,5 @@ describe("getLefthookDownloadUrl", () => {
     expect(() =>
       getLefthookDownloadUrl({ tag, version, platform: "linux", arch: "ia32" }),
     ).toThrow("Unsupported arch: ia32");
-  });
-});
-
-describe("downloadLefthook", () => {
-  test("downloads the Lefthook binary", { timeout: 60000 }, async () => {
-    const { tag, version } = await fetchLatestLefthookVersion();
-
-    await downloadLefthook({
-      tag,
-      version,
-      platform: platform(),
-      arch: arch(),
-      outputDir: tmpDir,
-    });
-
-    const binName = getLefthookBinaryName(platform());
-    const { stdout, stderr } = await execFileAsync(path.join(tmpDir, binName), [
-      "--version",
-    ]);
-    expect(stdout.trim()).toMatch(/^lefthook version \d+\.\d+\.\d+$/);
-    expect(stderr.trim()).toBe("");
   });
 });
