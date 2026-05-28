@@ -1,21 +1,7 @@
 import { addPath } from "ghakit/io";
 import { logError, logInfo } from "ghakit/log";
-import { execFile } from "node:child_process";
-import { mkdir, rm } from "node:fs/promises";
-import path from "node:path";
-import { promisify } from "node:util";
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  expect,
-  test,
-  vi,
-} from "vitest";
-
-const execFileAsync = promisify(execFile);
-const tmpDir = path.resolve(import.meta.dirname, ".main.test.tmp");
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { downloadLefthook, fetchLatestLefthookVersion } from "./lefthook.js";
 
 vi.mock("ghakit/io", () => ({
   addPath: vi.fn(),
@@ -26,14 +12,22 @@ vi.mock("ghakit/log", () => ({
   logInfo: vi.fn(),
 }));
 
+vi.mock("./lefthook.js", () => ({
+  downloadLefthook: vi.fn(),
+  fetchLatestLefthookVersion: vi
+    .fn()
+    .mockResolvedValue({ tag: "v1.10.0", version: "1.10.0" }),
+}));
+
 vi.mock("node:os", async () => {
   const actual = await vi.importActual<typeof import("node:os")>("node:os");
-  return { ...actual, tmpdir: vi.fn().mockImplementation(() => tmpDir) };
+  return {
+    ...actual,
+    arch: vi.fn().mockReturnValue("x64"),
+    platform: vi.fn().mockReturnValue("linux"),
+    tmpdir: vi.fn().mockReturnValue("/tmp"),
+  };
 });
-
-beforeAll(() => mkdir(tmpDir, { recursive: true }));
-
-afterAll(() => rm(tmpDir, { recursive: true, force: true }));
 
 beforeEach(() => {
   vi.resetModules();
@@ -42,33 +36,28 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals());
 
-test("sets up Lefthook", { timeout: 60000 }, async () => {
+test("sets up Lefthook", async () => {
   await import("./main.js");
 
   expect(logInfo).toHaveBeenNthCalledWith(
     1,
     "Fetching latest Lefthook version...",
   );
-  expect(logInfo).toHaveBeenNthCalledWith(
-    2,
-    expect.stringMatching(/^Downloading Lefthook \d+\.\d+\.\d+\.\.\.$/),
-  );
+  expect(logInfo).toHaveBeenNthCalledWith(2, "Downloading Lefthook 1.10.0...");
+  expect(downloadLefthook).toHaveBeenCalledWith({
+    tag: "v1.10.0",
+    version: "1.10.0",
+    platform: "linux",
+    arch: "x64",
+    outputDir: "/tmp/lefthook",
+  });
+  expect(addPath).toHaveBeenCalledWith("/tmp/lefthook");
   expect(process.exitCode).toBe(undefined);
-
-  const binDir = vi.mocked(addPath).mock.calls[0][0];
-  const binName = process.platform === "win32" ? "lefthook.exe" : "lefthook";
-  const { stdout, stderr } = await execFileAsync(path.join(binDir, binName), [
-    "--version",
-  ]);
-
-  expect(stdout.trim()).toMatch(/^lefthook version \d+\.\d+\.\d+$/);
-  expect(stderr.trim()).toBe("");
 });
 
 test("fails when Lefthook setup fails", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn().mockResolvedValue({ ok: false, statusText: "Not Found" }),
+  vi.mocked(fetchLatestLefthookVersion).mockRejectedValueOnce(
+    new Error("Failed to resolve latest version: Not Found"),
   );
 
   await import("./main.js");

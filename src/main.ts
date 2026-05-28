@@ -1,35 +1,24 @@
-import { exec } from "ghakit/exec";
 import { addPath } from "ghakit/io";
 import { logError, logInfo } from "ghakit/log";
-import { chmod, mkdir } from "node:fs/promises";
 import { arch, platform, tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  fetchLatestVersion,
-  getBinaryName,
-  getDownloadUrl,
-} from "./lefthook.js";
+import { downloadLefthook, fetchLatestLefthookVersion } from "./lefthook.js";
 
 try {
   const binDir = join(tmpdir(), "lefthook");
-  const binPath = join(binDir, getBinaryName(platform()));
 
   logInfo("Fetching latest Lefthook version...");
-  const { tag, version } = await fetchLatestVersion();
+  const { tag, version } = await fetchLatestLefthookVersion();
 
   logInfo(`Downloading Lefthook ${version}...`);
-  const url = getDownloadUrl({
+  await downloadLefthook({
     tag,
     version,
     platform: platform(),
     arch: arch(),
+    outputDir: binDir,
   });
-  await mkdir(binDir, { recursive: true });
-  await exec("curl", ["-fLSs", "--output", binPath, url], {
-    stdout: "silent",
-    stderr: "silent",
-  });
-  await chmod(binPath, "755");
+
   await addPath(binDir);
 } catch (err) {
   logError(err);
