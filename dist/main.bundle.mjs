@@ -1,41 +1,8 @@
-import { spawn } from 'node:child_process';
 import 'node:fs';
 import { appendFile, mkdir, chmod } from 'node:fs/promises';
-import { EOL, tmpdir, platform, arch } from 'node:os';
+import { EOL, tmpdir, arch, platform } from 'node:os';
 import { delimiter, join } from 'node:path';
-
-function exec(command, args, opts) {
-    return new Promise((resolve, reject) => {
-        const proc = spawn(command, args, {
-            stdio: [
-                "inherit",
-                "ignore",
-                "ignore",
-            ],
-        });
-        const stdoutChunks = [];
-        if (proc.stdout !== null) {
-            proc.stdout.on("data", (chunk) => stdoutChunks.push(chunk));
-        }
-        const stderrChunks = [];
-        if (proc.stderr !== null) {
-            proc.stderr.on("data", (chunk) => stderrChunks.push(chunk));
-        }
-        proc.on("error", reject);
-        proc.on("close", (code) => {
-            if (code === 0) {
-                {
-                    resolve();
-                }
-            }
-            else {
-                reject(new Error(code !== null
-                    ? `Process "${command}" exited with code ${code.toString()}`
-                    : `Process "${command}" was terminated by a signal`));
-            }
-        });
-    });
-}
+import { spawn } from 'node:child_process';
 
 /**
  * Returns whether the workflow is running in a CI environment.
@@ -89,7 +56,40 @@ function logError(err, options) {
     process.stdout.write(`::error${params}::${message}${EOL}`);
 }
 
-async function fetchLatestVersion() {
+function exec(command, args, opts) {
+    return new Promise((resolve, reject) => {
+        const proc = spawn(command, args, {
+            stdio: [
+                "inherit",
+                "ignore",
+                "ignore",
+            ],
+        });
+        const stdoutChunks = [];
+        if (proc.stdout !== null) {
+            proc.stdout.on("data", (chunk) => stdoutChunks.push(chunk));
+        }
+        const stderrChunks = [];
+        if (proc.stderr !== null) {
+            proc.stderr.on("data", (chunk) => stderrChunks.push(chunk));
+        }
+        proc.on("error", reject);
+        proc.on("close", (code) => {
+            if (code === 0) {
+                {
+                    resolve();
+                }
+            }
+            else {
+                reject(new Error(code !== null
+                    ? `Process "${command}" exited with code ${code.toString()}`
+                    : `Process "${command}" was terminated by a signal`));
+            }
+        });
+    });
+}
+
+async function fetchLatestLefthookVersion() {
     const res = await fetch("https://github.com/evilmartians/lefthook/releases/latest", { redirect: "manual" });
     if (res.status !== 302) {
         throw new Error(`Expected 302 redirect, but got ${res.status.toString()} (${res.statusText})`);
@@ -102,10 +102,10 @@ async function fetchLatestVersion() {
     const version = tag.replace(/^v/, "");
     return { tag, version };
 }
-function getBinaryName(platform) {
+function getLefthookBinaryName(platform) {
     return platform === "win32" ? "lefthook.exe" : "lefthook";
 }
-function getDownloadUrl({ tag, version, platform, arch, }) {
+function getLefthookDownloadUrl({ tag, version, platform, arch, }) {
     let os;
     switch (platform) {
         case "linux":
@@ -134,25 +134,26 @@ function getDownloadUrl({ tag, version, platform, arch, }) {
     const ext = platform === "win32" ? ".exe" : "";
     return `https://github.com/evilmartians/lefthook/releases/download/${tag}/lefthook_${version}_${os}_${archStr}${ext}`;
 }
+async function downloadLefthook({ tag, version, platform, arch, outputDir, }) {
+    const binPath = join(outputDir, getLefthookBinaryName(platform));
+    const url = getLefthookDownloadUrl({ tag, version, platform, arch });
+    await mkdir(outputDir, { recursive: true });
+    await exec("curl", ["-fLSs", "--output", binPath, url]);
+    await chmod(binPath, "755");
+}
 
 try {
     const binDir = join(tmpdir(), "lefthook");
-    const binPath = join(binDir, getBinaryName(platform()));
     logInfo("Fetching latest Lefthook version...");
-    const { tag, version } = await fetchLatestVersion();
+    const { tag, version } = await fetchLatestLefthookVersion();
     logInfo(`Downloading Lefthook ${version}...`);
-    const url = getDownloadUrl({
+    await downloadLefthook({
         tag,
         version,
         platform: platform(),
         arch: arch(),
+        outputDir: binDir,
     });
-    await mkdir(binDir, { recursive: true });
-    await exec("curl", ["-fLSs", "--output", binPath, url], {
-        stdout: "silent",
-        stderr: "silent",
-    });
-    await chmod(binPath, "755");
     await addPath(binDir);
 }
 catch (err) {

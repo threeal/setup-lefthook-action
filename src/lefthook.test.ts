@@ -1,15 +1,36 @@
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { execFile } from "node:child_process";
+import { mkdir, rm } from "node:fs/promises";
+import { arch, platform } from "node:os";
+import path from "node:path";
+import { promisify } from "node:util";
 import {
-  fetchLatestVersion,
-  getBinaryName,
-  getDownloadUrl,
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  test,
+  vi,
+} from "vitest";
+import {
+  downloadLefthook,
+  fetchLatestLefthookVersion,
+  getLefthookBinaryName,
+  getLefthookDownloadUrl,
 } from "./lefthook.js";
 
-describe("fetchLatestVersion", () => {
+const execFileAsync = promisify(execFile);
+const tmpDir = path.resolve(import.meta.dirname, ".lefthook.test.tmp");
+
+beforeAll(() => mkdir(tmpDir, { recursive: true }));
+
+afterAll(() => rm(tmpDir, { recursive: true, force: true }));
+
+describe("fetchLatestLefthookVersion", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   test("fetches the latest version", async () => {
-    const { tag, version } = await fetchLatestVersion();
+    const { tag, version } = await fetchLatestLefthookVersion();
     expect(tag).toMatch(/^v\d+\.\d+\.\d+$/);
     expect(version).toMatch(/^\d+\.\d+\.\d+$/);
   });
@@ -19,7 +40,7 @@ describe("fetchLatestVersion", () => {
       "fetch",
       vi.fn().mockResolvedValue({ status: 200, statusText: "OK" }),
     );
-    await expect(fetchLatestVersion()).rejects.toThrow(
+    await expect(fetchLatestLefthookVersion()).rejects.toThrow(
       "Expected 302 redirect, but got 200 (OK)",
     );
   });
@@ -32,24 +53,24 @@ describe("fetchLatestVersion", () => {
         headers: { get: () => null },
       }),
     );
-    await expect(fetchLatestVersion()).rejects.toThrow(
+    await expect(fetchLatestLefthookVersion()).rejects.toThrow(
       "Redirect response is missing the location header",
     );
   });
 });
 
-describe("getBinaryName", () => {
+describe("getLefthookBinaryName", () => {
   test("returns lefthook for non-Windows platforms", () => {
-    expect(getBinaryName("linux")).toBe("lefthook");
-    expect(getBinaryName("darwin")).toBe("lefthook");
+    expect(getLefthookBinaryName("linux")).toBe("lefthook");
+    expect(getLefthookBinaryName("darwin")).toBe("lefthook");
   });
 
   test("returns lefthook.exe for Windows", () => {
-    expect(getBinaryName("win32")).toBe("lefthook.exe");
+    expect(getLefthookBinaryName("win32")).toBe("lefthook.exe");
   });
 });
 
-describe("getDownloadUrl", () => {
+describe("getLefthookDownloadUrl", () => {
   const tag = "v1.10.0";
   const version = "1.10.0";
 
@@ -64,7 +85,7 @@ describe("getDownloadUrl", () => {
 
   test("returns unique URLs for each combination", () => {
     const urls = combinations.map(({ platform, arch }) =>
-      getDownloadUrl({ tag, version, platform, arch }),
+      getLefthookDownloadUrl({ tag, version, platform, arch }),
     );
     expect(new Set(urls).size).toBe(combinations.length);
   });
@@ -74,7 +95,7 @@ describe("getDownloadUrl", () => {
       `returns accessible URL for ${platform}/${arch}`,
       { timeout: 30000 },
       async () => {
-        const url = getDownloadUrl({ tag, version, platform, arch });
+        const url = getLefthookDownloadUrl({ tag, version, platform, arch });
         const res = await fetch(url, { method: "HEAD" });
         expect(res.ok).toBe(true);
       },
@@ -83,13 +104,39 @@ describe("getDownloadUrl", () => {
 
   test("throws on unsupported platform", () => {
     expect(() =>
-      getDownloadUrl({ tag, version, platform: "freebsd", arch: "x64" }),
+      getLefthookDownloadUrl({
+        tag,
+        version,
+        platform: "freebsd",
+        arch: "x64",
+      }),
     ).toThrow("Unsupported platform: freebsd");
   });
 
   test("throws on unsupported arch", () => {
     expect(() =>
-      getDownloadUrl({ tag, version, platform: "linux", arch: "ia32" }),
+      getLefthookDownloadUrl({ tag, version, platform: "linux", arch: "ia32" }),
     ).toThrow("Unsupported arch: ia32");
+  });
+});
+
+describe("downloadLefthook", () => {
+  test("downloads the Lefthook binary", { timeout: 60000 }, async () => {
+    const { tag, version } = await fetchLatestLefthookVersion();
+
+    await downloadLefthook({
+      tag,
+      version,
+      platform: platform(),
+      arch: arch(),
+      outputDir: tmpDir,
+    });
+
+    const binName = getLefthookBinaryName(platform());
+    const { stdout, stderr } = await execFileAsync(path.join(tmpDir, binName), [
+      "--version",
+    ]);
+    expect(stdout.trim()).toMatch(/^lefthook version \d+\.\d+\.\d+$/);
+    expect(stderr.trim()).toBe("");
   });
 });

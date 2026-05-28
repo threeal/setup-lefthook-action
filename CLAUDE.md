@@ -24,10 +24,9 @@ The entry point is `dist/main.bundle.mjs`, produced by Rollup bundling `src/main
 
 Source files in `src/`:
 
-- `main.ts` — action entry point; fetches the latest version, computes the bin directory from `tmpdir()`, creates the directory, downloads the binary, chmods it, and adds it to `PATH`
-- `lefthook.ts` — `fetchLatestVersion()` (hits the GitHub releases latest URL with `redirect: "manual"`, parses the tag from the `Location` header, returns `{ tag, version }`), `getBinaryName(platform)` (returns `lefthook` or `lefthook.exe`), and `getDownloadUrl({ tag, version, platform, arch })` (pure URL builder)
-- `download.ts` — `downloadFile(url, dest)` using `curl`
+- `main.ts` — action entry point; fetches the latest version, computes the bin directory from `tmpdir()`, downloads the binary, and adds it to `PATH`
+- `lefthook.ts` — `fetchLatestLefthookVersion()` (hits the GitHub releases latest URL with `redirect: "manual"`, parses the tag from the `Location` header, returns `{ tag, version }`), `getLefthookBinaryName(platform)` (returns `lefthook` or `lefthook.exe`), `getLefthookDownloadUrl({ tag, version, platform, arch })` (pure URL builder), and `downloadLefthook({ tag, version, platform, arch, outputDir })` (creates the directory, downloads the binary via `curl`, and chmods it)
 
-Tests use Vitest and must maintain 100% coverage (enforced in `vitest.config.ts`). `download.test.ts`, `lefthook.test.ts`, and `main.test.ts` use real network calls; `main.test.ts` mocks `gha-utils` and `node:os` (`tmpdir`, `arch`, `platform`).
+Tests use Vitest and must maintain 100% coverage (enforced in `vitest.config.ts`). `lefthook.test.ts` uses real network calls to test all functions including the actual binary download. `main.test.ts` is fully mock-based — it mocks `./lefthook.js`, `ghakit/io`, `ghakit/log`, and `node:os` (`tmpdir`, `arch`, `platform`).
 
 The action is defined in `action.yml` with no inputs — it always installs the latest version.
