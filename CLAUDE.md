@@ -25,9 +25,9 @@ The entry point is `dist/main.bundle.mjs`, produced by Rollup bundling `src/main
 Source files in `src/`:
 
 - `main.ts` — action entry point; calls `setupLefthookAction()` and handles top-level errors by logging and setting `process.exitCode = 1`
-- `action.ts` — `setupLefthookAction()` — fetches the latest version, computes the bin directory from `tmpdir()`, downloads the binary via `curl`, chmods it, and adds it to `PATH`
+- `action.ts` — `setupLefthookAction()` — fetches the latest version, checks if `RUNNER_TOOL_CACHE/lefthook/<version>/` (via `getRunnerToolCache()` from `ghakit/vars`) already exists; if so, skips the download and adds the cached directory to `PATH`; otherwise downloads the binary via `curl`, chmods it, and adds it to `PATH`
 - `lefthook.ts` — `fetchLatestLefthookVersion()` (hits the GitHub releases latest URL with `redirect: "manual"`, parses the tag from the `Location` header, returns `{ tag, version }`), `getLefthookBinaryName(platform)` (returns `lefthook` or `lefthook.exe`), and `getLefthookDownloadUrl({ tag, version, platform, arch })` (pure URL builder)
 
-Tests use Vitest and must maintain 100% coverage (enforced in `vitest.config.ts`). `lefthook.test.ts` tests pure functions with no network calls. `action.test.ts` mocks `fetchLatestLefthookVersion` and `ghakit/*` but performs a real binary download and verifies the downloaded binary runs correctly.
+Tests use Vitest and must maintain 100% coverage (enforced in `vitest.config.ts`). `lefthook.test.ts` tests pure functions with no network calls. `action.test.ts` mocks `fetchLatestLefthookVersion`, `ghakit/vars` (to control the cache dir), and `ghakit/io`/`ghakit/log`; it performs a real binary download on the first test and verifies the cached path is used on the second run.
 
 The action is defined in `action.yml` with no inputs — it always installs the latest version.

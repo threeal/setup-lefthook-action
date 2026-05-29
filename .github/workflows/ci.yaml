@@ -54,3 +54,12 @@ jobs:
 
       - name: Check Lefthook
         run: lefthook --version
+
+      - name: Setup Lefthook from cache
+        uses: ./setup-lefthook-action
+        env:
+          # Clear PATH to prevent cURL from running
+          PATH: ""
+
+      - name: Check Lefthook from cache
+        run: lefthook --version
