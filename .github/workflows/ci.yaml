@@ -52,14 +52,33 @@ jobs:
       - name: Setup Lefthook
         uses: ./setup-lefthook-action
 
-      - name: Check Lefthook
-        run: lefthook --version
+      - name: Verify latest Lefthook version
+        shell: bash
+        run: |
+          version="$(lefthook --version)"
+          echo "$version"
+          test "$version" != "lefthook version 2.1.0 "
+
+      - name: Setup Lefthook with version input
+        uses: ./setup-lefthook-action
+        with:
+          version: " 2.1.0\n" # surrounding whitespace should be trimmed
+
+      - name: Verify specified Lefthook version
+        shell: bash
+        run: |
+          version="$(lefthook --version)"
+          echo "$version"
+          test "$version" = "lefthook version 2.1.0 "
 
       - name: Setup Lefthook from cache
         uses: ./setup-lefthook-action
         env:
-          # Clear PATH to prevent cURL from running
-          PATH: ""
+          PATH: "" # forces cache usage by making curl unavailable
 
-      - name: Check Lefthook from cache
-        run: lefthook --version
+      - name: Verify cached Lefthook version
+        shell: bash
+        run: |
+          version="$(lefthook --version)"
+          echo "$version"
+          test "$version" != "lefthook version 2.1.0 "

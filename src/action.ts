@@ -1,5 +1,5 @@
 import { exec } from "ghakit/exec";
-import { addPath } from "ghakit/io";
+import { addPath, getInput } from "ghakit/io";
 import { logInfo } from "ghakit/log";
 import { getRunnerToolCache } from "ghakit/vars";
 import { access, chmod, mkdir } from "node:fs/promises";
@@ -12,8 +12,11 @@ import {
 } from "./lefthook.js";
 
 export async function setupLefthookAction() {
-  logInfo("Fetching latest Lefthook version...");
-  const { tag, version } = await fetchLatestLefthookVersion();
+  let version = getInput("version").trim();
+  if (!version) {
+    logInfo("Fetching latest Lefthook version...");
+    version = await fetchLatestLefthookVersion();
+  }
 
   const binDir = join(getRunnerToolCache(), "lefthook", version);
   try {
@@ -25,7 +28,6 @@ export async function setupLefthookAction() {
     const binPath = join(binDir, getLefthookBinaryName(platform()));
     await mkdir(binDir, { recursive: true });
     const url = getLefthookDownloadUrl({
-      tag,
       version,
       platform: platform(),
       arch: arch(),
