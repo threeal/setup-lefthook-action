@@ -1,7 +1,7 @@
-import { EOL, tmpdir, platform, arch } from 'node:os';
+import { EOL, platform, arch } from 'node:os';
 import { spawn } from 'node:child_process';
 import 'node:fs';
-import { appendFile, mkdir, chmod } from 'node:fs/promises';
+import { appendFile, access, mkdir, chmod } from 'node:fs/promises';
 import { delimiter, join } from 'node:path';
 
 /**
@@ -71,6 +71,15 @@ function exec(command, args, opts) {
 function getGitHubPath() {
     return process.env.GITHUB_PATH ?? "";
 }
+/**
+ * Returns the path to the directory containing preinstalled tools for
+ * GitHub-hosted runners.
+ *
+ * @returns The runner tool cache path, or an empty string if not set.
+ */
+function getRunnerToolCache() {
+    return process.env.RUNNER_TOOL_CACHE ?? "";
+}
 
 /**
  * Adds a system path to the environment in GitHub Actions.
@@ -136,20 +145,27 @@ function getLefthookDownloadUrl({ tag, version, platform, arch, }) {
 }
 
 async function setupLefthookAction() {
-    const binDir = join(tmpdir(), "lefthook");
     logInfo("Fetching latest Lefthook version...");
     const { tag, version } = await fetchLatestLefthookVersion();
-    logInfo(`Downloading Lefthook ${version}...`);
-    const binPath = join(binDir, getLefthookBinaryName(platform()));
-    await mkdir(binDir, { recursive: true });
-    const url = getLefthookDownloadUrl({
-        tag,
-        version,
-        platform: platform(),
-        arch: arch(),
-    });
-    await exec("curl", ["-fLSs", "--output", binPath, url]);
-    await chmod(binPath, "755");
+    const binDir = join(getRunnerToolCache(), "lefthook", version);
+    try {
+        await access(binDir);
+        logInfo(`Using cached Lefthook ${version}...`);
+    }
+    catch {
+        // not cached
+        logInfo(`Downloading Lefthook ${version}...`);
+        const binPath = join(binDir, getLefthookBinaryName(platform()));
+        await mkdir(binDir, { recursive: true });
+        const url = getLefthookDownloadUrl({
+            tag,
+            version,
+            platform: platform(),
+            arch: arch(),
+        });
+        await exec("curl", ["-fLSs", "--output", binPath, url]);
+        await chmod(binPath, "755");
+    }
     await addPath(binDir);
 }
 
