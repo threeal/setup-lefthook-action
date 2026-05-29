@@ -82,6 +82,18 @@ function getRunnerToolCache() {
 }
 
 /**
+ * Retrieves the value of a GitHub Actions input.
+ *
+ * Input names are matched case-insensitively — `getInput("token")` and
+ * `getInput("TOKEN")` both read the same `INPUT_TOKEN` env var.
+ *
+ * @param name - The name of the GitHub Actions input.
+ * @returns The value of the GitHub Actions input, or an empty string if not set.
+ */
+function getInput(name) {
+    return process.env[`INPUT_${name.toUpperCase()}`] ?? "";
+}
+/**
  * Adds a system path to the environment in GitHub Actions.
  *
  * Prepends the path to `process.env.PATH` immediately so it is available in
@@ -108,13 +120,12 @@ async function fetchLatestLefthookVersion() {
         throw new Error("Redirect response is missing the location header");
     }
     const tag = location.slice(location.lastIndexOf("/") + 1);
-    const version = tag.replace(/^v/, "");
-    return { tag, version };
+    return tag.replace(/^v/, "");
 }
 function getLefthookBinaryName(platform) {
     return platform === "win32" ? "lefthook.exe" : "lefthook";
 }
-function getLefthookDownloadUrl({ tag, version, platform, arch, }) {
+function getLefthookDownloadUrl({ version, platform, arch, }) {
     let os;
     switch (platform) {
         case "linux":
@@ -141,12 +152,15 @@ function getLefthookDownloadUrl({ tag, version, platform, arch, }) {
             throw new Error(`Unsupported arch: ${arch}`);
     }
     const ext = platform === "win32" ? ".exe" : "";
-    return `https://github.com/evilmartians/lefthook/releases/download/${tag}/lefthook_${version}_${os}_${archStr}${ext}`;
+    return `https://github.com/evilmartians/lefthook/releases/download/v${version}/lefthook_${version}_${os}_${archStr}${ext}`;
 }
 
 async function setupLefthookAction() {
-    logInfo("Fetching latest Lefthook version...");
-    const { tag, version } = await fetchLatestLefthookVersion();
+    let version = getInput("version").trim();
+    if (!version) {
+        logInfo("Fetching latest Lefthook version...");
+        version = await fetchLatestLefthookVersion();
+    }
     const binDir = join(getRunnerToolCache(), "lefthook", version);
     try {
         await access(binDir);
@@ -158,7 +172,6 @@ async function setupLefthookAction() {
         const binPath = join(binDir, getLefthookBinaryName(platform()));
         await mkdir(binDir, { recursive: true });
         const url = getLefthookDownloadUrl({
-            tag,
             version,
             platform: platform(),
             arch: arch(),

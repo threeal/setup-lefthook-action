@@ -1,9 +1,9 @@
-import { addPath } from "ghakit/io";
+import { addPath, getInput } from "ghakit/io";
 import { logInfo } from "ghakit/log";
 import { getRunnerToolCache } from "ghakit/vars";
 import { execFile } from "node:child_process";
 import { mkdir, rm } from "node:fs/promises";
-import { delimiter, join, resolve } from "node:path";
+import { basename, delimiter, join, resolve } from "node:path";
 import { promisify } from "node:util";
 import {
   afterAll,
@@ -28,7 +28,12 @@ vi.mock(import("./lefthook.js"), async (importActual) => ({
   fetchLatestLefthookVersion: vi.fn(),
 }));
 
-const tmpDir = resolve(import.meta.dirname, ".action.test.tmp");
+beforeEach(() => vi.clearAllMocks());
+
+const tmpDir = resolve(
+  import.meta.dirname,
+  `.${basename(import.meta.filename)}.tmp`,
+);
 
 beforeAll(async () => {
   await rm(tmpDir, { force: true, recursive: true });
@@ -38,18 +43,27 @@ beforeAll(async () => {
 afterAll(() => rm(tmpDir, { force: true, recursive: true }));
 
 describe("setupLefthookAction", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-
-    vi.mocked(fetchLatestLefthookVersion).mockResolvedValue({
-      tag: "v2.1.8",
-      version: "2.1.8",
+  const assertLefthookVersion = async (version: string) => {
+    const { stdout, stderr } = await execFileAsync("lefthook", ["--version"], {
+      env: {
+        PATH: vi
+          .mocked(addPath)
+          .mock.calls.map(([path]) => path)
+          .join(delimiter),
+      },
     });
+    expect(stdout.trim()).toBe(`lefthook version ${version}`);
+    expect(stderr.trim()).toBe("");
+  };
 
-    vi.mocked(getRunnerToolCache).mockReturnValue(join(tmpDir, "cache"));
-  });
+  beforeEach(() =>
+    vi.mocked(getRunnerToolCache).mockReturnValue(join(tmpDir, "cache")),
+  );
 
-  test("downloads binary and adds it to PATH", { timeout: 60000 }, async () => {
+  test("downloads latest version", { timeout: 60000 }, async () => {
+    vi.mocked(getInput).mockReturnValue("");
+    vi.mocked(fetchLatestLefthookVersion).mockResolvedValue("2.1.8");
+
     await setupLefthookAction();
 
     expect(vi.mocked(logInfo).mock.calls).toStrictEqual([
@@ -57,19 +71,32 @@ describe("setupLefthookAction", () => {
       ["Downloading Lefthook 2.1.8..."],
     ]);
 
-    const { stdout, stderr } = await execFileAsync("lefthook", ["--version"], {
-      env: {
-        PATH: vi
-          .mocked(addPath)
-          .mock.calls.map(([path]) => path)
-          .join(delimiter),
-      },
-    });
-    expect(stdout.trim()).toBe("lefthook version 2.1.8");
-    expect(stderr.trim()).toBe("");
+    await assertLefthookVersion("2.1.8");
   });
 
-  test("uses cached binary when available", { timeout: 10000 }, async () => {
+  test(
+    "downloads specified version without fetching latest",
+    { timeout: 60000 },
+    async () => {
+      vi.mocked(getInput).mockImplementation((name) =>
+        name === "version" ? " 2.1.0\n" : "",
+      );
+
+      await setupLefthookAction();
+
+      expect(fetchLatestLefthookVersion).not.toHaveBeenCalled();
+      expect(vi.mocked(logInfo).mock.calls).toStrictEqual([
+        ["Downloading Lefthook 2.1.0..."],
+      ]);
+
+      await assertLefthookVersion("2.1.0");
+    },
+  );
+
+  test("uses cached binary when available", async () => {
+    vi.mocked(getInput).mockReturnValue("");
+    vi.mocked(fetchLatestLefthookVersion).mockResolvedValue("2.1.8");
+
     await setupLefthookAction();
 
     expect(vi.mocked(logInfo).mock.calls).toStrictEqual([
@@ -77,15 +104,6 @@ describe("setupLefthookAction", () => {
       ["Using cached Lefthook 2.1.8..."],
     ]);
 
-    const { stdout, stderr } = await execFileAsync("lefthook", ["--version"], {
-      env: {
-        PATH: vi
-          .mocked(addPath)
-          .mock.calls.map(([path]) => path)
-          .join(delimiter),
-      },
-    });
-    expect(stdout.trim()).toBe("lefthook version 2.1.8");
-    expect(stderr.trim()).toBe("");
+    await assertLefthookVersion("2.1.8");
   });
 });

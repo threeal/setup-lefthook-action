@@ -1,7 +1,4 @@
-export async function fetchLatestLefthookVersion(): Promise<{
-  tag: string;
-  version: string;
-}> {
+export async function fetchLatestLefthookVersion(): Promise<string> {
   const res = await fetch(
     "https://github.com/evilmartians/lefthook/releases/latest",
     { redirect: "manual" },
@@ -16,8 +13,7 @@ export async function fetchLatestLefthookVersion(): Promise<{
     throw new Error("Redirect response is missing the location header");
   }
   const tag = location.slice(location.lastIndexOf("/") + 1);
-  const version = tag.replace(/^v/, "");
-  return { tag, version };
+  return tag.replace(/^v/, "");
 }
 
 export function getLefthookBinaryName(platform: string): string {
@@ -25,12 +21,10 @@ export function getLefthookBinaryName(platform: string): string {
 }
 
 export function getLefthookDownloadUrl({
-  tag,
   version,
   platform,
   arch,
 }: {
-  tag: string;
   version: string;
   platform: string;
   arch: string;
@@ -63,5 +57,5 @@ export function getLefthookDownloadUrl({
   }
 
   const ext = platform === "win32" ? ".exe" : "";
-  return `https://github.com/evilmartians/lefthook/releases/download/${tag}/lefthook_${version}_${os}_${archStr}${ext}`;
+  return `https://github.com/evilmartians/lefthook/releases/download/v${version}/lefthook_${version}_${os}_${archStr}${ext}`;
 }

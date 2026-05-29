@@ -1,6 +1,6 @@
 # Setup Lefthook Action
 
-A GitHub Action that downloads and sets up the latest [Lefthook](https://lefthook.dev/) on the runner.
+A GitHub Action that downloads and sets up [Lefthook](https://lefthook.dev/) on the runner.
 
 ## Usage
 
@@ -9,11 +9,19 @@ A GitHub Action that downloads and sets up the latest [Lefthook](https://lefthoo
   uses: threeal/setup-lefthook-action@v1.0.0
 ```
 
+## Inputs
+
+| Name      | Description                         | Default        |
+| --------- | ----------------------------------- | -------------- |
+| `version` | The version of Lefthook to install. | Latest version |
+
 ## Example
 
 ```yaml
 - name: Setup Lefthook
   uses: threeal/setup-lefthook-action@v1.0.0
+  with:
+    version: 2.1.0
 
 - name: Run pre-commit hooks
   run: lefthook run pre-commit --all-files

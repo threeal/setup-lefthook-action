@@ -9,8 +9,7 @@ describe("fetchLatestLefthookVersion", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   test("fetches the latest version", async () => {
-    const { tag, version } = await fetchLatestLefthookVersion();
-    expect(tag).toMatch(/^v\d+\.\d+\.\d+$/);
+    const version = await fetchLatestLefthookVersion();
     expect(version).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
@@ -50,7 +49,6 @@ describe("getLefthookBinaryName", () => {
 });
 
 describe("getLefthookDownloadUrl", () => {
-  const tag = "v1.10.0";
   const version = "1.10.0";
 
   const combinations = [
@@ -64,7 +62,7 @@ describe("getLefthookDownloadUrl", () => {
 
   test("returns unique URLs for each combination", () => {
     const urls = combinations.map(({ platform, arch }) =>
-      getLefthookDownloadUrl({ tag, version, platform, arch }),
+      getLefthookDownloadUrl({ version, platform, arch }),
     );
     expect(new Set(urls).size).toBe(combinations.length);
   });
@@ -74,7 +72,7 @@ describe("getLefthookDownloadUrl", () => {
       `returns accessible URL for ${platform}/${arch}`,
       { timeout: 30000 },
       async () => {
-        const url = getLefthookDownloadUrl({ tag, version, platform, arch });
+        const url = getLefthookDownloadUrl({ version, platform, arch });
         const res = await fetch(url, { method: "HEAD" });
         expect(res.ok).toBe(true);
       },
@@ -83,18 +81,13 @@ describe("getLefthookDownloadUrl", () => {
 
   test("throws on unsupported platform", () => {
     expect(() =>
-      getLefthookDownloadUrl({
-        tag,
-        version,
-        platform: "freebsd",
-        arch: "x64",
-      }),
+      getLefthookDownloadUrl({ version, platform: "freebsd", arch: "x64" }),
     ).toThrow("Unsupported platform: freebsd");
   });
 
   test("throws on unsupported arch", () => {
     expect(() =>
-      getLefthookDownloadUrl({ tag, version, platform: "linux", arch: "ia32" }),
+      getLefthookDownloadUrl({ version, platform: "linux", arch: "ia32" }),
     ).toThrow("Unsupported arch: ia32");
   });
 });
