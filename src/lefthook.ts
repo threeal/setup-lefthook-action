@@ -1,8 +1,4 @@
-export async function fetchLatestLefthookVersion(): Promise<string> {
-  const res = await fetch(
-    "https://github.com/evilmartians/lefthook/releases/latest",
-    { redirect: "manual" },
-  );
+export function parseLatestLefthookVersion(res: Response): string {
   if (res.status !== 302) {
     throw new Error(
       `Expected 302 redirect, but got ${res.status.toString()} (${res.statusText})`,
@@ -14,6 +10,14 @@ export async function fetchLatestLefthookVersion(): Promise<string> {
   }
   const tag = location.slice(location.lastIndexOf("/") + 1);
   return tag.replace(/^v/, "");
+}
+
+export async function fetchLatestLefthookVersion(): Promise<string> {
+  const res = await fetch(
+    "https://github.com/evilmartians/lefthook/releases/latest",
+    { redirect: "manual" },
+  );
+  return parseLatestLefthookVersion(res);
 }
 
 export function getLefthookBinaryName(platform: string): string {

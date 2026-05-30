@@ -1,39 +1,42 @@
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test } from "vitest";
 import {
   fetchLatestLefthookVersion,
   getLefthookBinaryName,
   getLefthookDownloadUrl,
+  parseLatestLefthookVersion,
 } from "./lefthook.js";
 
-describe("fetchLatestLefthookVersion", () => {
-  afterEach(() => vi.unstubAllGlobals());
-
-  test("fetches the latest version", async () => {
-    const version = await fetchLatestLefthookVersion();
-    expect(version).toMatch(/^\d+\.\d+\.\d+$/);
+describe("parseLatestLefthookVersion", () => {
+  test("parses version from redirect location", () => {
+    const res = new Response(null, {
+      status: 302,
+      headers: {
+        location:
+          "https://github.com/evilmartians/lefthook/releases/tag/v1.2.3",
+      },
+    });
+    expect(parseLatestLefthookVersion(res)).toBe("1.2.3");
   });
 
-  test("fails when the response is not a redirect", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({ status: 200, statusText: "OK" }),
-    );
-    await expect(fetchLatestLefthookVersion()).rejects.toThrow(
+  test("throws when response is not a redirect", () => {
+    const res = new Response(null, { status: 200, statusText: "OK" });
+    expect(() => parseLatestLefthookVersion(res)).toThrow(
       "Expected 302 redirect, but got 200 (OK)",
     );
   });
 
-  test("fails when the location header is missing", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        status: 302,
-        headers: { get: () => null },
-      }),
-    );
-    await expect(fetchLatestLefthookVersion()).rejects.toThrow(
+  test("throws when location header is missing", () => {
+    const res = new Response(null, { status: 302 });
+    expect(() => parseLatestLefthookVersion(res)).toThrow(
       "Redirect response is missing the location header",
     );
+  });
+});
+
+describe("fetchLatestLefthookVersion", () => {
+  test("fetches the latest version", async () => {
+    const version = await fetchLatestLefthookVersion();
+    expect(version).toMatch(/^\d+\.\d+\.\d+$/);
   });
 });
 
@@ -48,7 +51,7 @@ describe("getLefthookBinaryName", () => {
   });
 });
 
-describe("getLefthookDownloadUrl", () => {
+describe("getLefthookDownloadUrl", { concurrent: true }, () => {
   const version = "1.10.0";
 
   const combinations = [
@@ -67,25 +70,23 @@ describe("getLefthookDownloadUrl", () => {
     expect(new Set(urls).size).toBe(combinations.length);
   });
 
-  for (const { platform, arch } of combinations) {
-    test(
-      `returns accessible URL for ${platform}/${arch}`,
-      { timeout: 30000 },
-      async () => {
-        const url = getLefthookDownloadUrl({ version, platform, arch });
-        const res = await fetch(url, { method: "HEAD" });
-        expect(res.ok).toBe(true);
-      },
-    );
-  }
+  test.each(combinations)(
+    "returns accessible URL for $platform/$arch",
+    { timeout: 30000 },
+    async ({ platform, arch }) => {
+      const url = getLefthookDownloadUrl({ version, platform, arch });
+      const res = await fetch(url, { method: "HEAD" });
+      expect(res.ok).toBe(true);
+    },
+  );
 
-  test("throws on unsupported platform", () => {
+  test("throws when platform is unsupported", () => {
     expect(() =>
       getLefthookDownloadUrl({ version, platform: "freebsd", arch: "x64" }),
     ).toThrow("Unsupported platform: freebsd");
   });
 
-  test("throws on unsupported arch", () => {
+  test("throws when arch is unsupported", () => {
     expect(() =>
       getLefthookDownloadUrl({ version, platform: "linux", arch: "ia32" }),
     ).toThrow("Unsupported arch: ia32");
