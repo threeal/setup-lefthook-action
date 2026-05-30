@@ -110,8 +110,7 @@ async function addPath(sysPath) {
     await appendFile(getGitHubPath(), `${sysPath}${EOL}`);
 }
 
-async function fetchLatestLefthookVersion() {
-    const res = await fetch("https://github.com/evilmartians/lefthook/releases/latest", { redirect: "manual" });
+function parseLatestLefthookVersion(res) {
     if (res.status !== 302) {
         throw new Error(`Expected 302 redirect, but got ${res.status.toString()} (${res.statusText})`);
     }
@@ -121,6 +120,10 @@ async function fetchLatestLefthookVersion() {
     }
     const tag = location.slice(location.lastIndexOf("/") + 1);
     return tag.replace(/^v/, "");
+}
+async function fetchLatestLefthookVersion() {
+    const res = await fetch("https://github.com/evilmartians/lefthook/releases/latest", { redirect: "manual" });
+    return parseLatestLefthookVersion(res);
 }
 function getLefthookBinaryName(platform) {
     return platform === "win32" ? "lefthook.exe" : "lefthook";
