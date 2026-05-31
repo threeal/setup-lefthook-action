@@ -23,14 +23,40 @@ function logError(err, options) {
     const params = "";
     process.stdout.write(`::error${params}::${message}${EOL}`);
 }
+/**
+ * Logs a command along with its arguments in GitHub Actions.
+ *
+ * @param command - The command to log.
+ * @param args - The arguments of the command.
+ */
+function logCommand(command, ...args) {
+    const message = [command, ...args].join(" ");
+    process.stdout.write(`[command]${message}${EOL}`);
+}
+/**
+ * Begins a log group in GitHub Actions. Close it with {@link endLogGroup}.
+ *
+ * @param name - The name of the log group.
+ */
+function beginLogGroup(name) {
+    process.stdout.write(`::group::${name}${EOL}`);
+}
+/**
+ * Ends the log group opened by {@link beginLogGroup}.
+ */
+function endLogGroup() {
+    process.stdout.write(`::endgroup::${EOL}`);
+}
 
 function exec(command, args, opts) {
     return new Promise((resolve, reject) => {
         const proc = spawn(command, args, {
             stdio: [
                 "inherit",
-                "ignore",
-                "ignore",
+                "inherit"
+                    ,
+                "inherit"
+                    ,
             ],
         });
         const stdoutChunks = [];
@@ -161,27 +187,36 @@ function getLefthookDownloadUrl({ version, platform, arch, }) {
 async function setupLefthookAction() {
     let version = getInput("version").trim();
     if (!version) {
-        logInfo("Fetching latest Lefthook version...");
+        logInfo("Fetch latest Lefthook version");
         version = await fetchLatestLefthookVersion();
     }
     const binDir = join(getRunnerToolCache(), "lefthook", version);
     try {
         await access(binDir);
-        logInfo(`Using cached Lefthook ${version}...`);
+        logInfo(`Use cached Lefthook ${version}`);
     }
     catch {
-        // not cached
-        logInfo(`Downloading Lefthook ${version}...`);
-        const binPath = join(binDir, getLefthookBinaryName(platform()));
-        await mkdir(binDir, { recursive: true });
-        const url = getLefthookDownloadUrl({
-            version,
-            platform: platform(),
-            arch: arch(),
-        });
-        await exec("curl", ["-fLSs", "--output", binPath, url]);
-        await chmod(binPath, "755");
+        beginLogGroup(`Download Lefthook ${version}`);
+        try {
+            logInfo("Create directory");
+            await mkdir(binDir, { recursive: true });
+            const binPath = join(binDir, getLefthookBinaryName(platform()));
+            const url = getLefthookDownloadUrl({
+                version,
+                platform: platform(),
+                arch: arch(),
+            });
+            const args = ["-fL", "--output", binPath, url];
+            logCommand("curl", ...args);
+            await exec("curl", args);
+            logInfo("Set file permissions");
+            await chmod(binPath, "755");
+        }
+        finally {
+            endLogGroup();
+        }
     }
+    logInfo("Add Lefthook to PATH");
     await addPath(binDir);
 }
 

@@ -1,5 +1,5 @@
 import { addPath, getInput } from "ghakit/io";
-import { logInfo } from "ghakit/log";
+import { beginLogGroup, endLogGroup, logCommand, logInfo } from "ghakit/log";
 import { getRunnerToolCache } from "ghakit/vars";
 import { execFile } from "node:child_process";
 import { mkdir, rm } from "node:fs/promises";
@@ -43,6 +43,8 @@ beforeAll(async () => {
 afterAll(() => rm(tmpDir, { force: true, recursive: true }));
 
 describe("setupLefthookAction", () => {
+  let logs: string[] = [];
+
   const assertLefthookVersion = async (version: string) => {
     const { stdout, stderr } = await execFileAsync("lefthook", ["--version"], {
       env: {
@@ -56,9 +58,22 @@ describe("setupLefthookAction", () => {
     expect(stderr.trim()).toBe("");
   };
 
-  beforeEach(() =>
-    vi.mocked(getRunnerToolCache).mockReturnValue(join(tmpDir, "cache")),
-  );
+  beforeEach(() => {
+    logs = [];
+
+    vi.mocked(logInfo).mockImplementation((message) => logs.push(message));
+    vi.mocked(logCommand).mockImplementation((command, ...args) =>
+      logs.push(`[command] ${command} ${args.length.toString()}`),
+    );
+
+    vi.mocked(beginLogGroup).mockImplementation((name) =>
+      logs.push(`[begin] ${name}`),
+    );
+
+    vi.mocked(endLogGroup).mockImplementation(() => logs.push("[end]"));
+
+    vi.mocked(getRunnerToolCache).mockReturnValue(join(tmpDir, "cache"));
+  });
 
   test("downloads latest version", { timeout: 60000 }, async () => {
     vi.mocked(getInput).mockReturnValue("");
@@ -66,9 +81,14 @@ describe("setupLefthookAction", () => {
 
     await setupLefthookAction();
 
-    expect(vi.mocked(logInfo).mock.calls).toStrictEqual([
-      ["Fetching latest Lefthook version..."],
-      ["Downloading Lefthook 2.1.8..."],
+    expect(logs).toStrictEqual([
+      "Fetch latest Lefthook version",
+      "[begin] Download Lefthook 2.1.8",
+      "Create directory",
+      "[command] curl 4",
+      "Set file permissions",
+      "[end]",
+      "Add Lefthook to PATH",
     ]);
 
     await assertLefthookVersion("2.1.8");
@@ -85,8 +105,13 @@ describe("setupLefthookAction", () => {
       await setupLefthookAction();
 
       expect(fetchLatestLefthookVersion).not.toHaveBeenCalled();
-      expect(vi.mocked(logInfo).mock.calls).toStrictEqual([
-        ["Downloading Lefthook 2.1.0..."],
+      expect(logs).toStrictEqual([
+        "[begin] Download Lefthook 2.1.0",
+        "Create directory",
+        "[command] curl 4",
+        "Set file permissions",
+        "[end]",
+        "Add Lefthook to PATH",
       ]);
 
       await assertLefthookVersion("2.1.0");
@@ -99,9 +124,10 @@ describe("setupLefthookAction", () => {
 
     await setupLefthookAction();
 
-    expect(vi.mocked(logInfo).mock.calls).toStrictEqual([
-      ["Fetching latest Lefthook version..."],
-      ["Using cached Lefthook 2.1.8..."],
+    expect(logs).toStrictEqual([
+      "Fetch latest Lefthook version",
+      "Use cached Lefthook 2.1.8",
+      "Add Lefthook to PATH",
     ]);
 
     await assertLefthookVersion("2.1.8");
