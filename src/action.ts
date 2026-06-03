@@ -1,5 +1,5 @@
 import { exec } from "ghakit/exec";
-import { addPath, getInput } from "ghakit/io";
+import { addPath, getInput, setOutput } from "ghakit/io";
 import { beginLogGroup, endLogGroup, logCommand, logInfo } from "ghakit/log";
 import { getRunnerToolCache } from "ghakit/vars";
 import { access, chmod, mkdir } from "node:fs/promises";
@@ -49,4 +49,6 @@ export async function setupLefthookAction() {
 
   logInfo("Add Lefthook to PATH");
   await addPath(binDir);
+
+  await setOutput("version", version);
 }

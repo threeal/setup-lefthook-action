@@ -54,6 +54,9 @@ function exec(command, args, opts) {
 }
 
 // node_modules/.pnpm/ghakit@1.0.0/node_modules/ghakit/dist/vars.js
+function getGitHubOutput() {
+  return process.env.GITHUB_OUTPUT ?? "";
+}
 function getGitHubPath() {
   return process.env.GITHUB_PATH ?? "";
 }
@@ -64,6 +67,9 @@ function getRunnerToolCache() {
 // node_modules/.pnpm/ghakit@1.0.0/node_modules/ghakit/dist/io.js
 function getInput(name) {
   return process.env[`INPUT_${name.toUpperCase()}`] ?? "";
+}
+async function setOutput(name, value) {
+  await appendFile(getGitHubOutput(), `${name}=${value}${EOL}`);
 }
 async function addPath(sysPath) {
   process.env.PATH = process.env.PATH !== void 0 ? `${sysPath}${delimiter}${process.env.PATH}` : sysPath;
@@ -161,6 +167,7 @@ async function setupLefthookAction() {
   }
   logInfo("Add Lefthook to PATH");
   await addPath(binDir);
+  await setOutput("version", version);
 }
 
 // src/main.ts

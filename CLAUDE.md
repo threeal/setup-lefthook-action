@@ -30,7 +30,7 @@ This is a JavaScript GitHub Action that downloads and sets up a Lefthook binary 
 
 ### Action Definition
 
-- **`action.yml`** — Declares one optional input (`version`), branding, and the Node.js runtime pointing to `dist/main.js`.
+- **`action.yml`** — Declares one optional input (`version`), one output (`version` — the installed version), branding, and the Node.js runtime pointing to `dist/main.js`.
 
 ## Tooling
 

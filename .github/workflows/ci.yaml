@@ -50,16 +50,19 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Setup Lefthook
+        id: setup-lefthook
         uses: ./setup-lefthook-action
 
       - name: Verify latest Lefthook version
         shell: bash
         run: |
+          test "${{ steps.setup-lefthook.outputs.version }}" != "2.1.0"
           version="$(lefthook --version)"
           echo "$version"
           test "$version" != "lefthook version 2.1.0 "
 
       - name: Setup Lefthook with version input
+        id: setup-lefthook-versioned
         uses: ./setup-lefthook-action
         with:
           version: " 2.1.0\n" # surrounding whitespace should be trimmed
@@ -67,11 +70,13 @@ jobs:
       - name: Verify specified Lefthook version
         shell: bash
         run: |
+          test "${{ steps.setup-lefthook-versioned.outputs.version }}" = "2.1.0"
           version="$(lefthook --version)"
           echo "$version"
           test "$version" = "lefthook version 2.1.0 "
 
       - name: Setup Lefthook from cache
+        id: setup-lefthook-cached
         uses: ./setup-lefthook-action
         env:
           PATH: "" # forces cache usage by making curl unavailable
@@ -79,6 +84,7 @@ jobs:
       - name: Verify cached Lefthook version
         shell: bash
         run: |
+          test "${{ steps.setup-lefthook-cached.outputs.version }}" != "2.1.0"
           version="$(lefthook --version)"
           echo "$version"
           test "$version" != "lefthook version 2.1.0 "
