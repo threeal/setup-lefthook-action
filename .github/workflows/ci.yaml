@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v6.0.3
 
       - name: Setup Lefthook
         uses: ./
@@ -41,7 +41,7 @@ jobs:
           - macos-15-intel
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v6.0.3
         with:
           path: setup-lefthook-action
           sparse-checkout: |
