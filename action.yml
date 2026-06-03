@@ -1,6 +1,6 @@
 name: Setup Lefthook
 author: Alfi Maulana
-description: Set up the latest Lefthook on the runner
+description: Set up Lefthook on the runner
 branding:
   icon: anchor
   color: red
