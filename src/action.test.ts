@@ -1,4 +1,4 @@
-import { addPath, getInput } from "ghakit/io";
+import { addPath, getInput, setOutput } from "ghakit/io";
 import { beginLogGroup, endLogGroup, logCommand, logInfo } from "ghakit/log";
 import { getRunnerToolCache } from "ghakit/vars";
 import { execFile } from "node:child_process";
@@ -81,6 +81,7 @@ describe("setupLefthookAction", () => {
 
     await setupLefthookAction();
 
+    expect(setOutput).toHaveBeenCalledWith("version", "2.1.8");
     expect(logs).toStrictEqual([
       "Fetch latest Lefthook version",
       "[begin] Download Lefthook 2.1.8",
@@ -105,6 +106,7 @@ describe("setupLefthookAction", () => {
       await setupLefthookAction();
 
       expect(fetchLatestLefthookVersion).not.toHaveBeenCalled();
+      expect(setOutput).toHaveBeenCalledWith("version", "2.1.0");
       expect(logs).toStrictEqual([
         "[begin] Download Lefthook 2.1.0",
         "Create directory",
@@ -124,6 +126,7 @@ describe("setupLefthookAction", () => {
 
     await setupLefthookAction();
 
+    expect(setOutput).toHaveBeenCalledWith("version", "2.1.8");
     expect(logs).toStrictEqual([
       "Fetch latest Lefthook version",
       "Use cached Lefthook 2.1.8",

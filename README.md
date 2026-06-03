@@ -15,6 +15,12 @@ A GitHub Action that downloads and sets up [Lefthook](https://lefthook.dev/) on 
 | --------- | ----------------------------------- | -------------- |
 | `version` | The version of Lefthook to install. | Latest version |
 
+## Outputs
+
+| Name      | Description                                 |
+| --------- | ------------------------------------------- |
+| `version` | The version of Lefthook that was installed. |
+
 ## Example
 
 ```yaml
