@@ -1,31 +1,48 @@
 import { exec } from "ghakit/exec";
-import { addPath, getInput, setOutput } from "ghakit/io";
-import { beginLogGroup, endLogGroup, logCommand, logInfo } from "ghakit/log";
-import { getRunnerToolCache } from "ghakit/vars";
+import type { addPath, getInput, setOutput } from "ghakit/io";
+import type {
+  beginLogGroup,
+  endLogGroup,
+  logCommand,
+  logInfo,
+} from "ghakit/log";
+import type { getRunnerToolCache } from "ghakit/vars";
 import { access, chmod, mkdir } from "node:fs/promises";
 import { arch, platform } from "node:os";
 import { join } from "node:path";
 import {
-  fetchLatestLefthookVersion,
+  type fetchLatestLefthookVersion,
   getLefthookBinaryName,
   getLefthookDownloadUrl,
 } from "./lefthook.js";
 
-export async function setupLefthookAction() {
-  let version = getInput("version").trim();
+export interface SetupLefthookActionDeps {
+  addPath: typeof addPath;
+  beginLogGroup: typeof beginLogGroup;
+  endLogGroup: typeof endLogGroup;
+  fetchLatestLefthookVersion: typeof fetchLatestLefthookVersion;
+  getInput: typeof getInput;
+  getRunnerToolCache: typeof getRunnerToolCache;
+  logCommand: typeof logCommand;
+  logInfo: typeof logInfo;
+  setOutput: typeof setOutput;
+}
+
+export async function setupLefthookAction(deps: SetupLefthookActionDeps) {
+  let version = deps.getInput("version").trim();
   if (!version) {
-    logInfo("Fetch latest Lefthook version");
-    version = await fetchLatestLefthookVersion();
+    deps.logInfo("Fetch latest Lefthook version");
+    version = await deps.fetchLatestLefthookVersion();
   }
 
-  const binDir = join(getRunnerToolCache(), "lefthook", version);
+  const binDir = join(deps.getRunnerToolCache(), "lefthook", version);
   try {
     await access(binDir);
-    logInfo(`Use cached Lefthook ${version}`);
+    deps.logInfo(`Use cached Lefthook ${version}`);
   } catch {
-    beginLogGroup(`Download Lefthook ${version}`);
+    deps.beginLogGroup(`Download Lefthook ${version}`);
     try {
-      logInfo("Create directory");
+      deps.logInfo("Create directory");
       await mkdir(binDir, { recursive: true });
 
       const binPath = join(binDir, getLefthookBinaryName(platform()));
@@ -37,18 +54,18 @@ export async function setupLefthookAction() {
 
       const args = ["-fL", "--output", binPath, url];
 
-      logCommand("curl", ...args);
+      deps.logCommand("curl", ...args);
       await exec("curl", args);
 
-      logInfo("Set file permissions");
+      deps.logInfo("Set file permissions");
       await chmod(binPath, "755");
     } finally {
-      endLogGroup();
+      deps.endLogGroup();
     }
   }
 
-  logInfo("Add Lefthook to PATH");
-  await addPath(binDir);
+  deps.logInfo("Add Lefthook to PATH");
+  await deps.addPath(binDir);
 
-  await setOutput("version", version);
+  await deps.setOutput("version", version);
 }
