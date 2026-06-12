@@ -7,8 +7,6 @@ branding:
 inputs:
   version:
     description: The version of Lefthook to install. Defaults to the latest version.
-    required: false
-    default: ""
 outputs:
   version:
     description: The version of Lefthook that was installed.
