@@ -10,21 +10,12 @@ This is a JavaScript GitHub Action that downloads and sets up a Lefthook binary 
 
 ### Source Files
 
-- **`src/main.ts`** — Entry point that calls the action function and handles error logging and exit codes.
 - **`src/action.ts`** — The action implementation; resolves the Lefthook version (from input or latest), downloads the binary into the runner tool cache if not already cached, and adds it to `PATH`.
+- **`src/main.ts`** — Entry point that calls the action function and handles error logging and exit codes.
 - **`src/lefthook.ts`** — Lefthook-specific utilities: fetches the latest version from GitHub, resolves the binary name for the current platform, and builds the download URL for a given version, platform, and arch.
-- **`src/lefthook.test.ts`** — Tests for the pure functions in `lefthook.ts`, including live network calls.
-- **`src/action.test.ts`** — Integration tests for the action with a mocked GitHub Actions environment and a real binary download.
+- **`src/*.test.ts`** — Vitest test files co-located with source.
 
-### TypeScript Configuration
-
-- **`tsconfig.json`** — Type-check config with `noEmit: true`; used by `pnpm tsc`. Extends `@tsconfig/node24`, which sets `module: nodenext` and `moduleResolution: node16`. This requires import paths to use `.js` extensions even when importing `.ts` source files.
-
-### Build Configuration
-
-- **`tsup.config.ts`** — Configures tsup to bundle `src/main.ts` as ESM with tree-shaking enabled.
-
-### Build Output
+### Build Outputs
 
 - **`dist/main.js`** — Single bundled ESM file. Must be committed — CI verifies there is no git diff after building.
 
@@ -34,27 +25,52 @@ This is a JavaScript GitHub Action that downloads and sets up a Lefthook binary 
 
 ## Tooling
 
-- **pnpm** is the package manager. It uses `use-node-version` in `.npmrc` to select the Node.js version; `packageManager` in `package.json` pins the pnpm version; `engines.node` asserts Node >=24.
-- **tsup** is the bundler. All packages — including runtime dependencies like `ghakit` — belong in `devDependencies`; tsup bundles everything so there are no runtime `dependencies` needed.
-- **ghakit** handles all GitHub Actions-specific concerns: reading inputs, writing outputs, logging, and spawning processes.
-- **ESLint** uses flat config (`eslint.config.ts`) with `@eslint/js` recommended rules and `typescript-eslint` strict + stylistic type-checked rules.
-- **Prettier** uses `prettier-plugin-organize-imports` — import order is auto-managed.
-- **Lefthook** manages Git hooks via `lefthook.yaml`. It is a standalone binary, not a pnpm package.
-- **Vitest** uses `vitest.config.ts` with coverage always enabled, text reporter, and 100% thresholds across all metrics.
-- **Dependabot** keeps GitHub Actions and npm dependencies up to date automatically via `.github/dependabot.yaml`.
+### Dependabot
 
-## Testing
+Keeps GitHub Actions and npm dependencies up to date automatically via `.github/dependabot.yaml`.
 
-```sh
-pnpm vitest run             # Run all tests
-pnpm vitest run <file>      # Run a single test file
-```
+### ESLint
 
-Coverage is always enabled and computed for all files imported during the test run. Running a single test file may fail the 100% threshold if it imports a source file that another test is responsible for fully covering — use the full suite for accurate results.
+Linter configured in `eslint.config.ts` with `@eslint/js` recommended rules and `typescript-eslint` strict + stylistic type-checked rules.
+
+### ghakit
+
+Handles all GitHub Actions-specific concerns: reading inputs, writing outputs, logging, and spawning processes.
+
+### GitHub Actions
+
+Automates CI via `.github/workflows/ci.yaml`. Two jobs:
+
+- **Check** — runs `lefthook run pre-commit --all-files` (install, format, lint, type-check, build), then runs the full test suite with `pnpm vitest run`.
+- **Test** — checks out the action itself and runs it on `ubuntu-24.04`, `ubuntu-24.04-arm`, `windows-2025`, `windows-11-arm`, `macos-15`, and `macos-15-intel` to verify the actual action behavior end-to-end.
+
+### Lefthook
+
+Git hook manager configured in `lefthook.yaml`. It is a standalone binary, not a pnpm package.
+
+### pnpm
+
+Package manager. Uses `use-node-version` in `.npmrc` to select the Node.js version; `packageManager` in `package.json` pins the pnpm version; `engines.node` asserts Node >=24.
+
+### Prettier
+
+Formatter configured in `.prettierrc.json` using `prettier-plugin-organize-imports` — import order is auto-managed.
+
+### tsup
+
+Bundler configured in `tsup.config.ts`. All packages — including runtime dependencies like `ghakit` — belong in `devDependencies`; tsup bundles everything so there are no runtime `dependencies` needed.
+
+### TypeScript
+
+Type checker. `tsconfig.json` extends `@tsconfig/node24`, which sets `module: nodenext` and `moduleResolution: node16`. This requires all import paths to use `.js` extensions — even when importing `.ts` source files. The config uses `noEmit: true` and is used via `pnpm tsc`.
+
+### Vitest
+
+Test runner configured in `vitest.config.ts` with coverage always enabled, text reporter, and 100% thresholds across all metrics.
 
 ## Checking and Fixing
 
-Use Lefthook to run the same steps as the pre-commit hook:
+Run the pre-commit hook:
 
 ```sh
 lefthook run pre-commit              # staged files only (default)
@@ -65,11 +81,11 @@ This installs dependencies, fixes formatting, fixes lint, type-checks, and build
 
 Individual commands (manual fallback if needed): `pnpm prettier --write .`, `pnpm eslint --fix`, `pnpm tsc`, `pnpm tsup`.
 
-## CI
+## Testing
 
-CI has two jobs:
+```sh
+pnpm vitest run             # Run all tests
+pnpm vitest run <file>      # Run a single test file
+```
 
-- **Check** — runs `lefthook run pre-commit --all-files` (install, format, lint, type-check, build), then runs the full test suite with `pnpm vitest run`.
-- **Test** — checks out the action itself and runs it on `ubuntu-24.04`, `ubuntu-24.04-arm`, `windows-2025`, `windows-11-arm`, `macos-15`, and `macos-15-intel` to verify the actual action behavior end-to-end.
-
-See `.github/workflows/ci.yaml` for full details.
+Coverage is always enabled and computed for all files imported during the test run. Running a single test file may fail the 100% threshold if it imports a source file that another test is responsible for fully covering — use the full suite for accurate results.
