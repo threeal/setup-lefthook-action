@@ -1,10 +1,33 @@
-import { platform, arch, EOL } from 'os';
-import { spawn } from 'child_process';
 import 'fs';
 import { access, mkdir, chmod, appendFile } from 'fs/promises';
+import { platform, arch, EOL } from 'os';
 import { join, delimiter } from 'path';
+import { spawn } from 'child_process';
 
-// node_modules/.pnpm/ghakit@1.0.0/node_modules/ghakit/dist/log.js
+// node_modules/.pnpm/ghakit@1.0.0/node_modules/ghakit/dist/io.js
+
+// node_modules/.pnpm/ghakit@1.0.0/node_modules/ghakit/dist/vars.js
+function getGitHubOutput() {
+  return process.env.GITHUB_OUTPUT ?? "";
+}
+function getGitHubPath() {
+  return process.env.GITHUB_PATH ?? "";
+}
+function getRunnerToolCache() {
+  return process.env.RUNNER_TOOL_CACHE ?? "";
+}
+
+// node_modules/.pnpm/ghakit@1.0.0/node_modules/ghakit/dist/io.js
+function getInput(name) {
+  return process.env[`INPUT_${name.toUpperCase()}`] ?? "";
+}
+async function setOutput(name, value) {
+  await appendFile(getGitHubOutput(), `${name}=${value}${EOL}`);
+}
+async function addPath(sysPath) {
+  process.env.PATH = process.env.PATH !== void 0 ? `${sysPath}${delimiter}${process.env.PATH}` : sysPath;
+  await appendFile(getGitHubPath(), `${sysPath}${EOL}`);
+}
 function logInfo(message) {
   process.stdout.write(`${message}${EOL}`);
 }
@@ -51,29 +74,6 @@ function exec(command, args, opts) {
       }
     });
   });
-}
-
-// node_modules/.pnpm/ghakit@1.0.0/node_modules/ghakit/dist/vars.js
-function getGitHubOutput() {
-  return process.env.GITHUB_OUTPUT ?? "";
-}
-function getGitHubPath() {
-  return process.env.GITHUB_PATH ?? "";
-}
-function getRunnerToolCache() {
-  return process.env.RUNNER_TOOL_CACHE ?? "";
-}
-
-// node_modules/.pnpm/ghakit@1.0.0/node_modules/ghakit/dist/io.js
-function getInput(name) {
-  return process.env[`INPUT_${name.toUpperCase()}`] ?? "";
-}
-async function setOutput(name, value) {
-  await appendFile(getGitHubOutput(), `${name}=${value}${EOL}`);
-}
-async function addPath(sysPath) {
-  process.env.PATH = process.env.PATH !== void 0 ? `${sysPath}${delimiter}${process.env.PATH}` : sysPath;
-  await appendFile(getGitHubPath(), `${sysPath}${EOL}`);
 }
 
 // src/lefthook.ts
@@ -135,20 +135,20 @@ function getLefthookDownloadUrl({
 }
 
 // src/action.ts
-async function setupLefthookAction() {
-  let version = getInput("version").trim();
+async function setupLefthookAction(deps) {
+  let version = deps.getInput("version").trim();
   if (!version) {
-    logInfo("Fetch latest Lefthook version");
-    version = await fetchLatestLefthookVersion();
+    deps.logInfo("Fetch latest Lefthook version");
+    version = await deps.fetchLatestLefthookVersion();
   }
-  const binDir = join(getRunnerToolCache(), "lefthook", version);
+  const binDir = join(deps.getRunnerToolCache(), "lefthook", version);
   try {
     await access(binDir);
-    logInfo(`Use cached Lefthook ${version}`);
+    deps.logInfo(`Use cached Lefthook ${version}`);
   } catch {
-    beginLogGroup(`Download Lefthook ${version}`);
+    deps.beginLogGroup(`Download Lefthook ${version}`);
     try {
-      logInfo("Create directory");
+      deps.logInfo("Create directory");
       await mkdir(binDir, { recursive: true });
       const binPath = join(binDir, getLefthookBinaryName(platform()));
       const url = getLefthookDownloadUrl({
@@ -157,21 +157,31 @@ async function setupLefthookAction() {
         arch: arch()
       });
       const args = ["-fL", "--output", binPath, url];
-      logCommand("curl", ...args);
+      deps.logCommand("curl", ...args);
       await exec("curl", args);
-      logInfo("Set file permissions");
+      deps.logInfo("Set file permissions");
       await chmod(binPath, "755");
     } finally {
-      endLogGroup();
+      deps.endLogGroup();
     }
   }
-  logInfo("Add Lefthook to PATH");
-  await addPath(binDir);
-  await setOutput("version", version);
+  deps.logInfo("Add Lefthook to PATH");
+  await deps.addPath(binDir);
+  await deps.setOutput("version", version);
 }
 
 // src/main.ts
-await setupLefthookAction().catch((err) => {
+await setupLefthookAction({
+  addPath,
+  beginLogGroup,
+  endLogGroup,
+  fetchLatestLefthookVersion,
+  getRunnerToolCache,
+  getInput,
+  logCommand,
+  logInfo,
+  setOutput
+}).catch((err) => {
   logError(err);
   process.exitCode = 1;
 });

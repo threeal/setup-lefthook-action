@@ -1,34 +1,12 @@
-import { addPath, getInput, setOutput } from "ghakit/io";
-import { beginLogGroup, endLogGroup, logCommand, logInfo } from "ghakit/log";
-import { getRunnerToolCache } from "ghakit/vars";
 import { execFile } from "node:child_process";
 import { mkdir, rm } from "node:fs/promises";
 import { basename, delimiter, join, resolve } from "node:path";
 import { promisify } from "node:util";
-import {
-  afterAll,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  test,
-  vi,
-} from "vitest";
-import { setupLefthookAction } from "./action.js";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
+import { setupLefthookAction, SetupLefthookActionDeps } from "./action.js";
 import { fetchLatestLefthookVersion } from "./lefthook.js";
 
 const execFileAsync = promisify(execFile);
-
-vi.mock(import("ghakit/io"));
-vi.mock(import("ghakit/log"));
-vi.mock(import("ghakit/vars"));
-
-vi.mock(import("./lefthook.js"), async (importActual) => ({
-  ...(await importActual()),
-  fetchLatestLefthookVersion: vi.fn(),
-}));
-
-beforeEach(() => vi.clearAllMocks());
 
 const tmpDir = resolve(
   import.meta.dirname,
@@ -42,49 +20,72 @@ beforeAll(async () => {
 
 afterAll(() => rm(tmpDir, { force: true, recursive: true }));
 
-describe("setupLefthookAction", () => {
-  let logs: string[] = [];
+describe("setupLefthookAction", { concurrent: true }, () => {
+  interface Reference {
+    logs: string[];
+    paths: string[];
+    outputs: Record<string, string>;
+    latestVersion: string;
+  }
 
-  const assertLefthookVersion = async (version: string) => {
+  const mockDeps = ({
+    runnerToolCache,
+    versionInput,
+  }: {
+    runnerToolCache: string;
+    versionInput: string;
+  }) => {
+    const ref: Reference = {
+      logs: [],
+      paths: [],
+      outputs: {},
+      latestVersion: "",
+    };
+
+    const deps: SetupLefthookActionDeps = {
+      addPath: (path) => {
+        ref.paths.push(path);
+        return Promise.resolve();
+      },
+      beginLogGroup: (name) => ref.logs.push(`[begin] ${name}`),
+      endLogGroup: () => ref.logs.push("[end]"),
+      fetchLatestLefthookVersion: async () =>
+        (ref.latestVersion = await fetchLatestLefthookVersion()),
+      getInput: (name) => (name === "version" ? versionInput : ""),
+      getRunnerToolCache: () => runnerToolCache,
+      logCommand: (command, ...args) =>
+        ref.logs.push(`[command] ${command} ${args.length.toString()}`),
+      logInfo: (message) => ref.logs.push(message),
+      setOutput: (name, value) => {
+        ref.outputs[name] = value;
+        return Promise.resolve();
+      },
+    };
+
+    return { ref, deps };
+  };
+
+  const assertLefthookVersion = async (ref: Reference, version: string) => {
     const { stdout, stderr } = await execFileAsync("lefthook", ["--version"], {
       env: {
-        PATH: vi
-          .mocked(addPath)
-          .mock.calls.map(([path]) => path)
-          .join(delimiter),
+        PATH: ref.paths.join(delimiter),
       },
     });
     expect(stdout.trim()).toBe(`lefthook version ${version}`);
     expect(stderr.trim()).toBe("");
   };
 
-  beforeEach(() => {
-    logs = [];
-
-    vi.mocked(logInfo).mockImplementation((message) => logs.push(message));
-    vi.mocked(logCommand).mockImplementation((command, ...args) =>
-      logs.push(`[command] ${command} ${args.length.toString()}`),
-    );
-
-    vi.mocked(beginLogGroup).mockImplementation((name) =>
-      logs.push(`[begin] ${name}`),
-    );
-
-    vi.mocked(endLogGroup).mockImplementation(() => logs.push("[end]"));
-
-    vi.mocked(getRunnerToolCache).mockReturnValue(join(tmpDir, "cache"));
-  });
-
   test("downloads latest version", { timeout: 60000 }, async () => {
-    vi.mocked(getInput).mockReturnValue("");
-    vi.mocked(fetchLatestLefthookVersion).mockResolvedValue("2.1.8");
+    const { ref, deps } = mockDeps({
+      runnerToolCache: join(tmpDir, "downloadsLatestVersion"),
+      versionInput: "",
+    });
 
-    await setupLefthookAction();
+    await setupLefthookAction(deps);
 
-    expect(setOutput).toHaveBeenCalledWith("version", "2.1.8");
-    expect(logs).toStrictEqual([
+    expect(ref.logs).toStrictEqual([
       "Fetch latest Lefthook version",
-      "[begin] Download Lefthook 2.1.8",
+      `[begin] Download Lefthook ${ref.latestVersion}`,
       "Create directory",
       "[command] curl 4",
       "Set file permissions",
@@ -92,22 +93,23 @@ describe("setupLefthookAction", () => {
       "Add Lefthook to PATH",
     ]);
 
-    await assertLefthookVersion("2.1.8");
+    expect(ref.outputs).toStrictEqual({ version: ref.latestVersion });
+
+    await assertLefthookVersion(ref, ref.latestVersion);
   });
 
   test(
     "downloads specified version without fetching latest",
     { timeout: 60000 },
     async () => {
-      vi.mocked(getInput).mockImplementation((name) =>
-        name === "version" ? " 2.1.0\n" : "",
-      );
+      const { ref, deps } = mockDeps({
+        runnerToolCache: join(tmpDir, "downloadsSpecifiedVersion"),
+        versionInput: " 2.1.0\n",
+      });
 
-      await setupLefthookAction();
+      await setupLefthookAction(deps);
 
-      expect(fetchLatestLefthookVersion).not.toHaveBeenCalled();
-      expect(setOutput).toHaveBeenCalledWith("version", "2.1.0");
-      expect(logs).toStrictEqual([
+      expect(ref.logs).toStrictEqual([
         "[begin] Download Lefthook 2.1.0",
         "Create directory",
         "[command] curl 4",
@@ -116,23 +118,32 @@ describe("setupLefthookAction", () => {
         "Add Lefthook to PATH",
       ]);
 
-      await assertLefthookVersion("2.1.0");
+      expect(ref.outputs).toStrictEqual({ version: "2.1.0" });
+      expect(ref.latestVersion).toBe("");
+
+      await assertLefthookVersion(ref, "2.1.0");
     },
   );
 
   test("uses cached binary when available", async () => {
-    vi.mocked(getInput).mockReturnValue("");
-    vi.mocked(fetchLatestLefthookVersion).mockResolvedValue("2.1.8");
+    const runnerToolCache = join(tmpDir, "useCachedBinary");
+    await mkdir(join(runnerToolCache, "lefthook", "2.1.0"), {
+      recursive: true,
+    });
 
-    await setupLefthookAction();
+    const { ref, deps } = mockDeps({
+      runnerToolCache: join(tmpDir, "useCachedBinary"),
+      versionInput: "2.1.0",
+    });
 
-    expect(setOutput).toHaveBeenCalledWith("version", "2.1.8");
-    expect(logs).toStrictEqual([
-      "Fetch latest Lefthook version",
-      "Use cached Lefthook 2.1.8",
+    await setupLefthookAction(deps);
+
+    expect(ref.logs).toStrictEqual([
+      "Use cached Lefthook 2.1.0",
       "Add Lefthook to PATH",
     ]);
 
-    await assertLefthookVersion("2.1.8");
+    expect(ref.outputs).toStrictEqual({ version: "2.1.0" });
+    expect(ref.latestVersion).toBe("");
   });
 });
