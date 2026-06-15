@@ -1,3 +1,5 @@
+import { Arch, Platform } from "./platform.js";
+
 export function parseLatestLefthookVersion(res: Response): string {
   if (res.status !== 302) {
     throw new Error(
@@ -20,8 +22,28 @@ export async function fetchLatestLefthookVersion(): Promise<string> {
   return parseLatestLefthookVersion(res);
 }
 
-export function getLefthookBinaryName(platform: string): string {
+export function getLefthookBinaryName(platform: Platform): string {
   return platform === "win32" ? "lefthook.exe" : "lefthook";
+}
+
+function getLefthookOs(platform: Platform) {
+  switch (platform) {
+    case "linux":
+      return "Linux";
+    case "darwin":
+      return "MacOS";
+    case "win32":
+      return "Windows";
+  }
+}
+
+function getLefthookArch(arch: Arch) {
+  switch (arch) {
+    case "x64":
+      return "x86_64";
+    case "arm64":
+      return "arm64";
+  }
 }
 
 export function getLefthookDownloadUrl({
@@ -30,36 +52,11 @@ export function getLefthookDownloadUrl({
   arch,
 }: {
   version: string;
-  platform: string;
-  arch: string;
+  platform: Platform;
+  arch: Arch;
 }): string {
-  let os: string;
-  switch (platform) {
-    case "linux":
-      os = "Linux";
-      break;
-    case "darwin":
-      os = "MacOS";
-      break;
-    case "win32":
-      os = "Windows";
-      break;
-    default:
-      throw new Error(`Unsupported platform: ${platform}`);
-  }
-
-  let archStr: string;
-  switch (arch) {
-    case "x64":
-      archStr = "x86_64";
-      break;
-    case "arm64":
-      archStr = "arm64";
-      break;
-    default:
-      throw new Error(`Unsupported arch: ${arch}`);
-  }
-
+  const url = `https://github.com/evilmartians/lefthook/releases/download/v${version}`;
+  const filename = `lefthook_${version}_${getLefthookOs(platform)}_${getLefthookArch(arch)}`;
   const ext = platform === "win32" ? ".exe" : "";
-  return `https://github.com/evilmartians/lefthook/releases/download/v${version}/lefthook_${version}_${os}_${archStr}${ext}`;
+  return `${url}/${filename}${ext}`;
 }
