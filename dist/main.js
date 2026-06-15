@@ -77,26 +77,6 @@ async function addPath(sysPath) {
 }
 
 // src/lefthook.ts
-function parseLatestLefthookVersion(res) {
-  if (res.status !== 302) {
-    throw new Error(
-      `Expected 302 redirect, but got ${res.status.toString()} (${res.statusText})`
-    );
-  }
-  const location = res.headers.get("location");
-  if (!location) {
-    throw new Error("Redirect response is missing the location header");
-  }
-  const tag = location.slice(location.lastIndexOf("/") + 1);
-  return tag.replace(/^v/, "");
-}
-async function fetchLatestLefthookVersion() {
-  const res = await fetch(
-    "https://github.com/evilmartians/lefthook/releases/latest",
-    { redirect: "manual" }
-  );
-  return parseLatestLefthookVersion(res);
-}
 function getLefthookOs(platform2) {
   switch (platform2) {
     case "linux":
@@ -148,15 +128,38 @@ function getArch() {
   }
 }
 
+// src/version.ts
+function parseVersionFromRedirectResponse(res) {
+  if (res.status !== 302) {
+    throw new Error(
+      `Expected 302 redirect, but got ${res.status.toString()} (${res.statusText})`
+    );
+  }
+  const location = res.headers.get("location");
+  if (!location) {
+    throw new Error("Redirect response is missing the location header");
+  }
+  const tag = location.slice(location.lastIndexOf("/") + 1);
+  return tag.replace(/^v/, "");
+}
+async function resolveVersion() {
+  const version = getInput("version").trim();
+  if (!version) {
+    logInfo("Fetch latest Lefthook version");
+    const res = await fetch(
+      "https://github.com/evilmartians/lefthook/releases/latest",
+      { redirect: "manual" }
+    );
+    return parseVersionFromRedirectResponse(res);
+  }
+  return version;
+}
+
 // src/action.ts
 async function setupLefthookAction() {
   const platform2 = getPlatform();
   const arch2 = getArch();
-  let version = getInput("version").trim();
-  if (!version) {
-    logInfo("Fetch latest Lefthook version");
-    version = await fetchLatestLefthookVersion();
-  }
+  const version = await resolveVersion();
   const binDir = join(getRunnerToolCache(), "lefthook", version);
   try {
     await access(binDir);

@@ -1,27 +1,5 @@
 import { Arch, Platform } from "./platform.js";
 
-export function parseLatestLefthookVersion(res: Response): string {
-  if (res.status !== 302) {
-    throw new Error(
-      `Expected 302 redirect, but got ${res.status.toString()} (${res.statusText})`,
-    );
-  }
-  const location = res.headers.get("location");
-  if (!location) {
-    throw new Error("Redirect response is missing the location header");
-  }
-  const tag = location.slice(location.lastIndexOf("/") + 1);
-  return tag.replace(/^v/, "");
-}
-
-export async function fetchLatestLefthookVersion(): Promise<string> {
-  const res = await fetch(
-    "https://github.com/evilmartians/lefthook/releases/latest",
-    { redirect: "manual" },
-  );
-  return parseLatestLefthookVersion(res);
-}
-
 function getLefthookOs(platform: Platform) {
   switch (platform) {
     case "linux":

@@ -1,43 +1,5 @@
 import { describe, expect, test } from "vitest";
-import {
-  fetchLatestLefthookVersion,
-  getLefthookDownloadUrl,
-  parseLatestLefthookVersion,
-} from "./lefthook.js";
-
-describe("parseLatestLefthookVersion", () => {
-  test("parses version from redirect location", () => {
-    const res = new Response(null, {
-      status: 302,
-      headers: {
-        location:
-          "https://github.com/evilmartians/lefthook/releases/tag/v1.2.3",
-      },
-    });
-    expect(parseLatestLefthookVersion(res)).toBe("1.2.3");
-  });
-
-  test("throws when response is not a redirect", () => {
-    const res = new Response(null, { status: 200, statusText: "OK" });
-    expect(() => parseLatestLefthookVersion(res)).toThrow(
-      "Expected 302 redirect, but got 200 (OK)",
-    );
-  });
-
-  test("throws when location header is missing", () => {
-    const res = new Response(null, { status: 302 });
-    expect(() => parseLatestLefthookVersion(res)).toThrow(
-      "Redirect response is missing the location header",
-    );
-  });
-});
-
-describe("fetchLatestLefthookVersion", () => {
-  test("fetches the latest version", async () => {
-    const version = await fetchLatestLefthookVersion();
-    expect(version).toMatch(/^\d+\.\d+\.\d+$/);
-  });
-});
+import { getLefthookDownloadUrl } from "./lefthook.js";
 
 describe("getLefthookDownloadUrl", { concurrent: true }, () => {
   const version = "1.10.0";
