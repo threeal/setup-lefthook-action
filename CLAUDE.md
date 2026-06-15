@@ -14,6 +14,8 @@ This is a JavaScript GitHub Action that downloads and sets up a Lefthook binary 
 - **`src/action.ts`** — The action implementation; resolves the Lefthook version (from input or latest), downloads the binary into the runner tool cache if not already cached, and adds it to `PATH`.
 - **`src/lefthook.ts`** — Lefthook-specific utilities: fetches the latest version from GitHub, resolves the binary name for the current platform, and builds the download URL for a given version, platform, and arch.
 - **`src/lefthook.test.ts`** — Tests for the pure functions in `lefthook.ts`, including live network calls.
+- **`src/platform.ts`** — Platform and arch type definitions (`Platform`, `Arch`) and validated accessors (`getPlatform`, `getArch`) that throw on unsupported values.
+- **`src/platform.test.ts`** — Tests for `getPlatform` and `getArch`, using mocked `node:os` to cover all supported values and unsupported error paths.
 - **`src/action.test.ts`** — Integration tests for the action with a mocked GitHub Actions environment and a real binary download.
 
 ### TypeScript Configuration

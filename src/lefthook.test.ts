@@ -79,16 +79,4 @@ describe("getLefthookDownloadUrl", { concurrent: true }, () => {
       expect(res.ok).toBe(true);
     },
   );
-
-  test("throws when platform is unsupported", () => {
-    expect(() =>
-      getLefthookDownloadUrl({ version, platform: "freebsd", arch: "x64" }),
-    ).toThrow("Unsupported platform: freebsd");
-  });
-
-  test("throws when arch is unsupported", () => {
-    expect(() =>
-      getLefthookDownloadUrl({ version, platform: "linux", arch: "ia32" }),
-    ).toThrow("Unsupported arch: ia32");
-  });
 });

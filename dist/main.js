@@ -1,4 +1,4 @@
-import { platform, arch, EOL } from 'os';
+import { EOL, platform, arch } from 'os';
 import { spawn } from 'child_process';
 import 'fs';
 import { access, mkdir, chmod, appendFile } from 'fs/promises';
@@ -100,42 +100,60 @@ async function fetchLatestLefthookVersion() {
 function getLefthookBinaryName(platform2) {
   return platform2 === "win32" ? "lefthook.exe" : "lefthook";
 }
+function getLefthookOs(platform2) {
+  switch (platform2) {
+    case "linux":
+      return "Linux";
+    case "darwin":
+      return "MacOS";
+    case "win32":
+      return "Windows";
+  }
+}
+function getLefthookArch(arch2) {
+  switch (arch2) {
+    case "x64":
+      return "x86_64";
+    case "arm64":
+      return "arm64";
+  }
+}
 function getLefthookDownloadUrl({
   version,
   platform: platform2,
   arch: arch2
 }) {
-  let os;
-  switch (platform2) {
-    case "linux":
-      os = "Linux";
-      break;
-    case "darwin":
-      os = "MacOS";
-      break;
-    case "win32":
-      os = "Windows";
-      break;
-    default:
-      throw new Error(`Unsupported platform: ${platform2}`);
-  }
-  let archStr;
-  switch (arch2) {
-    case "x64":
-      archStr = "x86_64";
-      break;
-    case "arm64":
-      archStr = "arm64";
-      break;
-    default:
-      throw new Error(`Unsupported arch: ${arch2}`);
-  }
+  const url = `https://github.com/evilmartians/lefthook/releases/download/v${version}`;
+  const filename = `lefthook_${version}_${getLefthookOs(platform2)}_${getLefthookArch(arch2)}`;
   const ext = platform2 === "win32" ? ".exe" : "";
-  return `https://github.com/evilmartians/lefthook/releases/download/v${version}/lefthook_${version}_${os}_${archStr}${ext}`;
+  return `${url}/${filename}${ext}`;
+}
+function getPlatform() {
+  const val = platform();
+  switch (val) {
+    case "linux":
+    case "darwin":
+    case "win32":
+      return val;
+    default:
+      throw new Error(`Unsupported platform: ${val}`);
+  }
+}
+function getArch() {
+  const val = arch();
+  switch (val) {
+    case "x64":
+    case "arm64":
+      return val;
+    default:
+      throw new Error(`Unsupported arch: ${val}`);
+  }
 }
 
 // src/action.ts
 async function setupLefthookAction() {
+  const platform2 = getPlatform();
+  const arch2 = getArch();
   let version = getInput("version").trim();
   if (!version) {
     logInfo("Fetch latest Lefthook version");
@@ -150,12 +168,8 @@ async function setupLefthookAction() {
     try {
       logInfo("Create directory");
       await mkdir(binDir, { recursive: true });
-      const binPath = join(binDir, getLefthookBinaryName(platform()));
-      const url = getLefthookDownloadUrl({
-        version,
-        platform: platform(),
-        arch: arch()
-      });
+      const binPath = join(binDir, getLefthookBinaryName(platform2));
+      const url = getLefthookDownloadUrl({ version, platform: platform2, arch: arch2 });
       const args = ["-fL", "--output", binPath, url];
       logCommand("curl", ...args);
       await exec("curl", args);
