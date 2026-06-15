@@ -22,10 +22,6 @@ export async function fetchLatestLefthookVersion(): Promise<string> {
   return parseLatestLefthookVersion(res);
 }
 
-export function getLefthookBinaryName(platform: Platform): string {
-  return platform === "win32" ? "lefthook.exe" : "lefthook";
-}
-
 function getLefthookOs(platform: Platform) {
   switch (platform) {
     case "linux":
@@ -46,6 +42,8 @@ function getLefthookArch(arch: Arch) {
   }
 }
 
+export type ExecutableExt = "" | ".exe";
+
 export function getLefthookDownloadUrl({
   version,
   platform,
@@ -54,9 +52,10 @@ export function getLefthookDownloadUrl({
   version: string;
   platform: Platform;
   arch: Arch;
-}): string {
-  const url = `https://github.com/evilmartians/lefthook/releases/download/v${version}`;
-  const filename = `lefthook_${version}_${getLefthookOs(platform)}_${getLefthookArch(arch)}`;
-  const ext = platform === "win32" ? ".exe" : "";
-  return `${url}/${filename}${ext}`;
+}): { baseUrl: string; stem: string; ext: ExecutableExt } {
+  return {
+    baseUrl: `https://github.com/evilmartians/lefthook/releases/download/v${version}`,
+    stem: `lefthook_${version}_${getLefthookOs(platform)}_${getLefthookArch(arch)}`,
+    ext: platform === "win32" ? ".exe" : "",
+  };
 }

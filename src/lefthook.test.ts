@@ -1,7 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
   fetchLatestLefthookVersion,
-  getLefthookBinaryName,
   getLefthookDownloadUrl,
   parseLatestLefthookVersion,
 } from "./lefthook.js";
@@ -40,17 +39,6 @@ describe("fetchLatestLefthookVersion", () => {
   });
 });
 
-describe("getLefthookBinaryName", () => {
-  test("returns lefthook for non-Windows platforms", () => {
-    expect(getLefthookBinaryName("linux")).toBe("lefthook");
-    expect(getLefthookBinaryName("darwin")).toBe("lefthook");
-  });
-
-  test("returns lefthook.exe for Windows", () => {
-    expect(getLefthookBinaryName("win32")).toBe("lefthook.exe");
-  });
-});
-
 describe("getLefthookDownloadUrl", { concurrent: true }, () => {
   const version = "1.10.0";
 
@@ -64,9 +52,14 @@ describe("getLefthookDownloadUrl", { concurrent: true }, () => {
   ] as const;
 
   test("returns unique URLs for each combination", () => {
-    const urls = combinations.map(({ platform, arch }) =>
-      getLefthookDownloadUrl({ version, platform, arch }),
-    );
+    const urls = combinations.map(({ platform, arch }) => {
+      const { baseUrl, stem, ext } = getLefthookDownloadUrl({
+        version,
+        platform,
+        arch,
+      });
+      return `${baseUrl}/${stem}${ext}`;
+    });
     expect(new Set(urls).size).toBe(combinations.length);
   });
 
@@ -74,8 +67,12 @@ describe("getLefthookDownloadUrl", { concurrent: true }, () => {
     "returns accessible URL for $platform/$arch",
     { timeout: 30000 },
     async ({ platform, arch }) => {
-      const url = getLefthookDownloadUrl({ version, platform, arch });
-      const res = await fetch(url, { method: "HEAD" });
+      const { baseUrl, stem, ext } = getLefthookDownloadUrl({
+        version,
+        platform,
+        arch,
+      });
+      const res = await fetch(`${baseUrl}/${stem}${ext}`, { method: "HEAD" });
       expect(res.ok).toBe(true);
     },
   );
