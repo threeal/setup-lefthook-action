@@ -6,7 +6,6 @@ import { access, chmod, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import {
   fetchLatestLefthookVersion,
-  getLefthookBinaryName,
   getLefthookDownloadUrl,
 } from "./lefthook.js";
 import { getArch, getPlatform } from "./platform.js";
@@ -31,10 +30,14 @@ export async function setupLefthookAction() {
       logInfo("Create directory");
       await mkdir(binDir, { recursive: true });
 
-      const binPath = join(binDir, getLefthookBinaryName(platform));
-      const url = getLefthookDownloadUrl({ version, platform, arch });
+      const { baseUrl, stem, ext } = getLefthookDownloadUrl({
+        version,
+        platform,
+        arch,
+      });
 
-      const args = ["-fL", "--output", binPath, url];
+      const binPath = join(binDir, `lefthook${ext}`);
+      const args = ["-fL", "--output", binPath, `${baseUrl}/${stem}${ext}`];
 
       logCommand("curl", ...args);
       await exec("curl", args);

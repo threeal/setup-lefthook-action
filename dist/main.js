@@ -97,9 +97,6 @@ async function fetchLatestLefthookVersion() {
   );
   return parseLatestLefthookVersion(res);
 }
-function getLefthookBinaryName(platform2) {
-  return platform2 === "win32" ? "lefthook.exe" : "lefthook";
-}
 function getLefthookOs(platform2) {
   switch (platform2) {
     case "linux":
@@ -123,10 +120,11 @@ function getLefthookDownloadUrl({
   platform: platform2,
   arch: arch2
 }) {
-  const url = `https://github.com/evilmartians/lefthook/releases/download/v${version}`;
-  const filename = `lefthook_${version}_${getLefthookOs(platform2)}_${getLefthookArch(arch2)}`;
-  const ext = platform2 === "win32" ? ".exe" : "";
-  return `${url}/${filename}${ext}`;
+  return {
+    baseUrl: `https://github.com/evilmartians/lefthook/releases/download/v${version}`,
+    stem: `lefthook_${version}_${getLefthookOs(platform2)}_${getLefthookArch(arch2)}`,
+    ext: platform2 === "win32" ? ".exe" : ""
+  };
 }
 function getPlatform() {
   const val = platform();
@@ -168,9 +166,13 @@ async function setupLefthookAction() {
     try {
       logInfo("Create directory");
       await mkdir(binDir, { recursive: true });
-      const binPath = join(binDir, getLefthookBinaryName(platform2));
-      const url = getLefthookDownloadUrl({ version, platform: platform2, arch: arch2 });
-      const args = ["-fL", "--output", binPath, url];
+      const { baseUrl, stem, ext } = getLefthookDownloadUrl({
+        version,
+        platform: platform2,
+        arch: arch2
+      });
+      const binPath = join(binDir, `lefthook${ext}`);
+      const args = ["-fL", "--output", binPath, `${baseUrl}/${stem}${ext}`];
       logCommand("curl", ...args);
       await exec("curl", args);
       logInfo("Set file permissions");
