@@ -36,8 +36,18 @@ describe("parseVersionFromRedirectResponse", () => {
 });
 
 describe("resolveVersion", () => {
-  test("fetches and returns latest version when input is empty", async () => {
+  test("throws when version input is empty", async () => {
     vi.mocked(getInput).mockReturnValue("");
+
+    await expect(resolveVersion()).rejects.toThrow(
+      "version input must not be empty",
+    );
+
+    expect(vi.mocked(logInfo).mock.calls).toStrictEqual([]);
+  });
+
+  test("fetches and returns latest version when input is 'latest'", async () => {
+    vi.mocked(getInput).mockReturnValue("latest");
 
     const version = await resolveVersion();
 
@@ -47,7 +57,7 @@ describe("resolveVersion", () => {
     ]);
   });
 
-  test("returns specified version directly when input is set", async () => {
+  test("returns version as-is when input is a version number", async () => {
     vi.mocked(getInput).mockReturnValue("2.1.0");
 
     const version = await resolveVersion();

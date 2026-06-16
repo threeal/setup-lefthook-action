@@ -13,7 +13,7 @@ This is a JavaScript GitHub Action that downloads and sets up a Lefthook binary 
 - **`src/main.ts`** — Entry point that calls the action function and handles error logging and exit codes.
 - **`src/action.ts`** — The action implementation; downloads the binary into the runner tool cache if not already cached, and adds it to `PATH`.
 - **`src/action.test.ts`** — Integration tests for the action with a mocked GitHub Actions environment and a real binary download.
-- **`src/version.ts`** — Version resolution: reads the `version` input or fetches the latest from GitHub releases by following the redirect on the releases/latest URL.
+- **`src/version.ts`** — Version resolution: reads the `version` input; throws if empty, fetches the latest from GitHub releases by following the redirect on the releases/latest URL if set to `latest`, or returns the version string as-is otherwise.
 - **`src/version.test.ts`** — Tests for `parseVersionFromRedirectResponse` and `resolveVersion`, including a live network call to fetch the latest version.
 - **`src/download.ts`** — Download utilities: `getDownloadComponents` builds the URL components (`baseUrl`, `stem`, `ext`) for a given version, platform, and arch; `downloadBinary` downloads the binary to a directory and sets file permissions.
 - **`src/download.test.ts`** — Tests for `getDownloadComponents` and `downloadBinary`, including live network calls.
