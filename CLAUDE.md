@@ -11,12 +11,14 @@ This is a JavaScript GitHub Action that downloads and sets up a Lefthook binary 
 ### Source Files
 
 - **`src/main.ts`** — Entry point that calls the action function and handles error logging and exit codes.
-- **`src/action.ts`** — The action implementation; resolves the Lefthook version (from input or latest), downloads the binary into the runner tool cache if not already cached, and adds it to `PATH`.
-- **`src/lefthook.ts`** — Lefthook-specific utilities: fetches the latest version from GitHub and builds the download URL (base URL, filename stem, and executable extension) for a given version, platform, and arch.
-- **`src/lefthook.test.ts`** — Tests for the pure functions in `lefthook.ts`, including live network calls.
+- **`src/action.ts`** — The action implementation; downloads the binary into the runner tool cache if not already cached, and adds it to `PATH`.
+- **`src/action.test.ts`** — Integration tests for the action with a mocked GitHub Actions environment and a real binary download.
+- **`src/version.ts`** — Version resolution: reads the `version` input or fetches the latest from GitHub releases by following the redirect on the releases/latest URL.
+- **`src/version.test.ts`** — Tests for `parseVersionFromRedirectResponse` and `resolveVersion`, including a live network call to fetch the latest version.
+- **`src/download.ts`** — Download utilities: `getDownloadComponents` builds the URL components (`baseUrl`, `stem`, `ext`) for a given version, platform, and arch; `downloadBinary` downloads the binary to a directory and sets file permissions.
+- **`src/download.test.ts`** — Tests for `getDownloadComponents` and `downloadBinary`, including live network calls.
 - **`src/platform.ts`** — Platform and arch type definitions (`Platform`, `Arch`) and validated accessors (`getPlatform`, `getArch`) that throw on unsupported values.
 - **`src/platform.test.ts`** — Tests for `getPlatform` and `getArch`, using mocked `node:os` to cover all supported values and unsupported error paths.
-- **`src/action.test.ts`** — Integration tests for the action with a mocked GitHub Actions environment and a real binary download.
 
 ### TypeScript Configuration
 

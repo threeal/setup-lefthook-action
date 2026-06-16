@@ -1,24 +1,17 @@
 import { exec } from "ghakit/exec";
-import { addPath, getInput, setOutput } from "ghakit/io";
+import { addPath, setOutput } from "ghakit/io";
 import { beginLogGroup, endLogGroup, logCommand, logInfo } from "ghakit/log";
 import { getRunnerToolCache } from "ghakit/vars";
 import { access, chmod, mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import {
-  fetchLatestLefthookVersion,
-  getLefthookDownloadUrl,
-} from "./lefthook.js";
+import { getDownloadComponents } from "./download.js";
 import { getArch, getPlatform } from "./platform.js";
+import { resolveVersion } from "./version.js";
 
 export async function setupLefthookAction() {
   const platform = getPlatform();
   const arch = getArch();
-
-  let version = getInput("version").trim();
-  if (!version) {
-    logInfo("Fetch latest Lefthook version");
-    version = await fetchLatestLefthookVersion();
-  }
+  const version = await resolveVersion();
 
   const binDir = join(getRunnerToolCache(), "lefthook", version);
   try {
@@ -30,7 +23,7 @@ export async function setupLefthookAction() {
       logInfo("Create directory");
       await mkdir(binDir, { recursive: true });
 
-      const { baseUrl, stem, ext } = getLefthookDownloadUrl({
+      const { baseUrl, stem, ext } = getDownloadComponents({
         version,
         platform,
         arch,

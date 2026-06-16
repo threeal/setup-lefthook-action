@@ -76,28 +76,8 @@ async function addPath(sysPath) {
   await appendFile(getGitHubPath(), `${sysPath}${EOL}`);
 }
 
-// src/lefthook.ts
-function parseLatestLefthookVersion(res) {
-  if (res.status !== 302) {
-    throw new Error(
-      `Expected 302 redirect, but got ${res.status.toString()} (${res.statusText})`
-    );
-  }
-  const location = res.headers.get("location");
-  if (!location) {
-    throw new Error("Redirect response is missing the location header");
-  }
-  const tag = location.slice(location.lastIndexOf("/") + 1);
-  return tag.replace(/^v/, "");
-}
-async function fetchLatestLefthookVersion() {
-  const res = await fetch(
-    "https://github.com/evilmartians/lefthook/releases/latest",
-    { redirect: "manual" }
-  );
-  return parseLatestLefthookVersion(res);
-}
-function getLefthookOs(platform2) {
+// src/download.ts
+function toOs(platform2) {
   switch (platform2) {
     case "linux":
       return "Linux";
@@ -107,7 +87,7 @@ function getLefthookOs(platform2) {
       return "Windows";
   }
 }
-function getLefthookArch(arch2) {
+function toArch(arch2) {
   switch (arch2) {
     case "x64":
       return "x86_64";
@@ -115,14 +95,14 @@ function getLefthookArch(arch2) {
       return "arm64";
   }
 }
-function getLefthookDownloadUrl({
+function getDownloadComponents({
   version,
   platform: platform2,
   arch: arch2
 }) {
   return {
     baseUrl: `https://github.com/evilmartians/lefthook/releases/download/v${version}`,
-    stem: `lefthook_${version}_${getLefthookOs(platform2)}_${getLefthookArch(arch2)}`,
+    stem: `lefthook_${version}_${toOs(platform2)}_${toArch(arch2)}`,
     ext: platform2 === "win32" ? ".exe" : ""
   };
 }
@@ -148,15 +128,38 @@ function getArch() {
   }
 }
 
+// src/version.ts
+function parseVersionFromRedirectResponse(res) {
+  if (res.status !== 302) {
+    throw new Error(
+      `Expected 302 redirect, but got ${res.status.toString()} (${res.statusText})`
+    );
+  }
+  const location = res.headers.get("location");
+  if (!location) {
+    throw new Error("Redirect response is missing the location header");
+  }
+  const tag = location.slice(location.lastIndexOf("/") + 1);
+  return tag.replace(/^v/, "");
+}
+async function resolveVersion() {
+  const version = getInput("version").trim();
+  if (!version) {
+    logInfo("Fetch latest Lefthook version");
+    const res = await fetch(
+      "https://github.com/evilmartians/lefthook/releases/latest",
+      { redirect: "manual" }
+    );
+    return parseVersionFromRedirectResponse(res);
+  }
+  return version;
+}
+
 // src/action.ts
 async function setupLefthookAction() {
   const platform2 = getPlatform();
   const arch2 = getArch();
-  let version = getInput("version").trim();
-  if (!version) {
-    logInfo("Fetch latest Lefthook version");
-    version = await fetchLatestLefthookVersion();
-  }
+  const version = await resolveVersion();
   const binDir = join(getRunnerToolCache(), "lefthook", version);
   try {
     await access(binDir);
@@ -166,7 +169,7 @@ async function setupLefthookAction() {
     try {
       logInfo("Create directory");
       await mkdir(binDir, { recursive: true });
-      const { baseUrl, stem, ext } = getLefthookDownloadUrl({
+      const { baseUrl, stem, ext } = getDownloadComponents({
         version,
         platform: platform2,
         arch: arch2
