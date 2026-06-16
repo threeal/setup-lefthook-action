@@ -76,8 +76,8 @@ async function addPath(sysPath) {
   await appendFile(getGitHubPath(), `${sysPath}${EOL}`);
 }
 
-// src/lefthook.ts
-function getLefthookOs(platform2) {
+// src/download.ts
+function toOs(platform2) {
   switch (platform2) {
     case "linux":
       return "Linux";
@@ -87,7 +87,7 @@ function getLefthookOs(platform2) {
       return "Windows";
   }
 }
-function getLefthookArch(arch2) {
+function toArch(arch2) {
   switch (arch2) {
     case "x64":
       return "x86_64";
@@ -95,14 +95,14 @@ function getLefthookArch(arch2) {
       return "arm64";
   }
 }
-function getLefthookDownloadUrl({
+function getDownloadComponents({
   version,
   platform: platform2,
   arch: arch2
 }) {
   return {
     baseUrl: `https://github.com/evilmartians/lefthook/releases/download/v${version}`,
-    stem: `lefthook_${version}_${getLefthookOs(platform2)}_${getLefthookArch(arch2)}`,
+    stem: `lefthook_${version}_${toOs(platform2)}_${toArch(arch2)}`,
     ext: platform2 === "win32" ? ".exe" : ""
   };
 }
@@ -169,7 +169,7 @@ async function setupLefthookAction() {
     try {
       logInfo("Create directory");
       await mkdir(binDir, { recursive: true });
-      const { baseUrl, stem, ext } = getLefthookDownloadUrl({
+      const { baseUrl, stem, ext } = getDownloadComponents({
         version,
         platform: platform2,
         arch: arch2

@@ -1,6 +1,6 @@
 import { Arch, Platform } from "./platform.js";
 
-function getLefthookOs(platform: Platform) {
+function toOs(platform: Platform) {
   switch (platform) {
     case "linux":
       return "Linux";
@@ -11,7 +11,7 @@ function getLefthookOs(platform: Platform) {
   }
 }
 
-function getLefthookArch(arch: Arch) {
+function toArch(arch: Arch) {
   switch (arch) {
     case "x64":
       return "x86_64";
@@ -22,7 +22,7 @@ function getLefthookArch(arch: Arch) {
 
 export type ExecutableExt = "" | ".exe";
 
-export function getLefthookDownloadUrl({
+export function getDownloadComponents({
   version,
   platform,
   arch,
@@ -33,7 +33,7 @@ export function getLefthookDownloadUrl({
 }): { baseUrl: string; stem: string; ext: ExecutableExt } {
   return {
     baseUrl: `https://github.com/evilmartians/lefthook/releases/download/v${version}`,
-    stem: `lefthook_${version}_${getLefthookOs(platform)}_${getLefthookArch(arch)}`,
+    stem: `lefthook_${version}_${toOs(platform)}_${toArch(arch)}`,
     ext: platform === "win32" ? ".exe" : "",
   };
 }

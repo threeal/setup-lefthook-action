@@ -4,7 +4,7 @@ import { beginLogGroup, endLogGroup, logCommand, logInfo } from "ghakit/log";
 import { getRunnerToolCache } from "ghakit/vars";
 import { access, chmod, mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { getLefthookDownloadUrl } from "./lefthook.js";
+import { getDownloadComponents } from "./download.js";
 import { getArch, getPlatform } from "./platform.js";
 import { resolveVersion } from "./version.js";
 
@@ -23,7 +23,7 @@ export async function setupLefthookAction() {
       logInfo("Create directory");
       await mkdir(binDir, { recursive: true });
 
-      const { baseUrl, stem, ext } = getLefthookDownloadUrl({
+      const { baseUrl, stem, ext } = getDownloadComponents({
         version,
         platform,
         arch,
