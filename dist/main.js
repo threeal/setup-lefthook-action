@@ -144,15 +144,20 @@ function parseVersionFromRedirectResponse(res) {
 }
 async function resolveVersion() {
   const version = getInput("version").trim();
-  if (!version) {
-    logInfo("Fetch latest Lefthook version");
-    const res = await fetch(
-      "https://github.com/evilmartians/lefthook/releases/latest",
-      { redirect: "manual" }
-    );
-    return parseVersionFromRedirectResponse(res);
+  switch (version) {
+    case "":
+      throw new Error("version input must not be empty");
+    case "latest": {
+      logInfo("Fetch latest Lefthook version");
+      const res = await fetch(
+        "https://github.com/evilmartians/lefthook/releases/latest",
+        { redirect: "manual" }
+      );
+      return parseVersionFromRedirectResponse(res);
+    }
+    default:
+      return version;
   }
-  return version;
 }
 
 // src/action.ts

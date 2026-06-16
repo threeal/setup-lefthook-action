@@ -11,9 +11,9 @@ A GitHub Action that downloads and sets up [Lefthook](https://lefthook.dev/) on 
 
 ## Inputs
 
-| Name      | Description                         | Default        |
-| --------- | ----------------------------------- | -------------- |
-| `version` | The version of Lefthook to install. | Latest version |
+| Name      | Description                                                          | Default  |
+| --------- | -------------------------------------------------------------------- | -------- |
+| `version` | The Lefthook version to install, or `latest` for the newest release. | `latest` |
 
 ## Outputs
 
