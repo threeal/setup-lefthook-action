@@ -11,7 +11,7 @@ This is a JavaScript GitHub Action that downloads and sets up a Lefthook binary 
 ### Source Files
 
 - **`src/main.ts`** — Entry point that calls the action function and handles error logging and exit codes.
-- **`src/action.ts`** — The action implementation; downloads the binary into the runner tool cache if not already cached, and adds it to `PATH`.
+- **`src/action.ts`** — The action implementation; verifies the runner tool cache with `verifyCache`, downloads the binary if the cache is missing or invalid, and adds it to `PATH`.
 - **`src/action.test.ts`** — Integration tests for the action with a mocked GitHub Actions environment and a real binary download.
 - **`src/version.ts`** — Version resolution: reads the `version` input; throws if empty, fetches the latest from GitHub releases by following the redirect on the releases/latest URL if set to `latest`, or returns the version string as-is otherwise.
 - **`src/version.test.ts`** — Tests for `parseVersionFromRedirectResponse` and `resolveVersion`, including a live network call to fetch the latest version.
@@ -19,6 +19,8 @@ This is a JavaScript GitHub Action that downloads and sets up a Lefthook binary 
 - **`src/download.test.ts`** — Tests for `getDownloadComponents` and `downloadBinary`, including live network calls.
 - **`src/platform.ts`** — Platform and arch type definitions (`Platform`, `Arch`) and validated accessors (`getPlatform`, `getArch`) that throw on unsupported values.
 - **`src/platform.test.ts`** — Tests for `getPlatform` and `getArch`, using mocked `node:os` to cover all supported values and unsupported error paths.
+- **`src/cache.ts`** — Cache validation: `verifyCache` stats the cache path and returns `false` silently if it does not exist, logs an error and removes the path if it exists but is not a directory, or returns `true` if it is a valid directory.
+- **`src/cache.test.ts`** — Tests for `verifyCache` using real file interactions, covering the non-existent, non-directory, and valid-directory cases.
 
 ### TypeScript Configuration
 
