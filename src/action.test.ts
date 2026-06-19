@@ -97,6 +97,7 @@ describe("setupLefthookAction", () => {
 
     expect(setOutput).toHaveBeenCalledWith("version", "2.1.0");
     expect(logs).toStrictEqual([
+      "Verify Lefthook cache",
       "Use cached Lefthook 2.1.0",
       "Add Lefthook to PATH",
     ]);

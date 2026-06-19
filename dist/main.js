@@ -1,7 +1,7 @@
 import { EOL, platform, arch } from 'os';
 import { spawn } from 'child_process';
 import 'fs';
-import { access, mkdir, chmod, appendFile } from 'fs/promises';
+import { mkdir, chmod, stat, rm, appendFile } from 'fs/promises';
 import { join, delimiter } from 'path';
 
 // node_modules/.pnpm/ghakit@1.0.0/node_modules/ghakit/dist/log.js
@@ -74,6 +74,22 @@ async function setOutput(name, value) {
 async function addPath(sysPath) {
   process.env.PATH = process.env.PATH !== void 0 ? `${sysPath}${delimiter}${process.env.PATH}` : sysPath;
   await appendFile(getGitHubPath(), `${sysPath}${EOL}`);
+}
+async function verifyCache(cacheDir) {
+  const stats = await stat(cacheDir, { throwIfNoEntry: false });
+  if (stats === void 0) return false;
+  logInfo("Verify Lefthook cache");
+  try {
+    if (!stats.isDirectory()) {
+      throw new Error("cache path is not a directory");
+    }
+    return true;
+  } catch (err) {
+    logError(err);
+    logInfo("Remove Lefthook cache");
+    await rm(cacheDir, { force: true, recursive: true });
+    return false;
+  }
 }
 
 // src/download.ts
@@ -165,21 +181,20 @@ async function setupLefthookAction() {
   const platform2 = getPlatform();
   const arch2 = getArch();
   const version = await resolveVersion();
-  const binDir = join(getRunnerToolCache(), "lefthook", version);
-  try {
-    await access(binDir);
+  const cacheDir = join(getRunnerToolCache(), "lefthook", version);
+  if (await verifyCache(cacheDir)) {
     logInfo(`Use cached Lefthook ${version}`);
-  } catch {
+  } else {
     beginLogGroup(`Download Lefthook ${version}`);
     try {
       logInfo("Create directory");
-      await mkdir(binDir, { recursive: true });
+      await mkdir(cacheDir, { recursive: true });
       const { baseUrl, stem, ext } = getDownloadComponents({
         version,
         platform: platform2,
         arch: arch2
       });
-      const binPath = join(binDir, `lefthook${ext}`);
+      const binPath = join(cacheDir, `lefthook${ext}`);
       const args = ["-fL", "--output", binPath, `${baseUrl}/${stem}${ext}`];
       logCommand("curl", ...args);
       await exec("curl", args);
@@ -190,7 +205,7 @@ async function setupLefthookAction() {
     }
   }
   logInfo("Add Lefthook to PATH");
-  await addPath(binDir);
+  await addPath(cacheDir);
   await setOutput("version", version);
 }
 
