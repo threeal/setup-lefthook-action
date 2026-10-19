@@ -28,7 +28,7 @@ This is a JavaScript GitHub Action that downloads and sets up a Lefthook binary 
 
 ### Build Configuration
 
-- **`tsup.config.ts`** — Configures tsup to bundle `src/main.ts` as ESM with tree-shaking enabled.
+- **`rolldown.config.ts`** — Configures Rolldown to bundle `src/main.ts` for Node with comments stripped.
 
 ### Build Output
 
@@ -41,7 +41,7 @@ This is a JavaScript GitHub Action that downloads and sets up a Lefthook binary 
 ## Tooling
 
 - **pnpm** is the package manager. It uses `devEngines.runtime` in `package.json` to select the Node.js version; `packageManager` in `package.json` pins the pnpm version.
-- **tsup** is the bundler. All packages — including runtime dependencies like `ghakit` — belong in `devDependencies`; tsup bundles everything so there are no runtime `dependencies` needed.
+- **Rolldown** is the bundler. All packages — including runtime dependencies like `ghakit` — belong in `devDependencies`; Rolldown bundles everything so there are no runtime `dependencies` needed.
 - **ghakit** handles all GitHub Actions-specific concerns: reading inputs, writing outputs, logging, and spawning processes.
 - **ESLint** uses flat config (`eslint.config.ts`) with `@eslint/js` recommended rules and `typescript-eslint` strict + stylistic type-checked rules.
 - **Prettier** uses `prettier-plugin-organize-imports` — import order is auto-managed.
@@ -69,7 +69,7 @@ lefthook run pre-commit --all-files  # all files — matches what CI runs
 
 This installs dependencies, fixes formatting, fixes lint, type-checks, and builds the action — in that order, stopping on the first failure. If any file changes during the run, it also fails and shows a diff of what changed — re-stage the changed files and retry.
 
-Individual commands (manual fallback if needed): `pnpm prettier --write .`, `pnpm eslint --fix`, `pnpm tsc`, `pnpm tsup`.
+Individual commands (manual fallback if needed): `pnpm prettier --write .`, `pnpm eslint --fix`, `pnpm tsc`, `pnpm rolldown -c`.
 
 ## CI
 
