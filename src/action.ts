@@ -9,6 +9,14 @@ import { getDownloadComponents } from "./download.js";
 import { getArch, getPlatform } from "./platform.js";
 import { resolveVersion } from "./version.js";
 
+/**
+ * Sets up Lefthook on the runner.
+ *
+ * Resolves the version from the `version` input, then downloads that version's
+ * binary into the runner tool cache unless a valid cached copy already exists.
+ * The cache directory is added to `PATH`, and the resolved version is set as
+ * the `version` output.
+ */
 export async function setupLefthookAction() {
   const platform = getPlatform();
   const arch = getArch();
