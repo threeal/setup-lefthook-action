@@ -69,7 +69,7 @@ lefthook run pre-commit --all-files  # all files — matches what CI runs
 
 This installs dependencies, type-checks, fixes lint, fixes formatting, and builds the action — in that order, stopping on the first failure. If any file changes during the run, it also fails and shows a diff of what changed — re-stage the changed files and retry.
 
-Individual commands (manual fallback if needed): `pnpm tsc`, `pnpm eslint --fix`, `pnpm prettier --write .`, `pnpm rolldown -c`.
+Individual commands (manual fallback if needed): `pnpm tsc`, `pnpm eslint --fix --max-warnings 0`, `pnpm prettier --write .`, `pnpm rolldown -c`.
 
 ## CI
 
