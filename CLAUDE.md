@@ -67,15 +67,15 @@ lefthook run pre-commit              # staged files only (default)
 lefthook run pre-commit --all-files  # all files — matches what CI runs
 ```
 
-This installs dependencies, fixes formatting, fixes lint, type-checks, and builds the action — in that order, stopping on the first failure. If any file changes during the run, it also fails and shows a diff of what changed — re-stage the changed files and retry.
+This installs dependencies, type-checks, fixes lint, fixes formatting, and builds the action — in that order, stopping on the first failure. If any file changes during the run, it also fails and shows a diff of what changed — re-stage the changed files and retry.
 
-Individual commands (manual fallback if needed): `pnpm prettier --write .`, `pnpm eslint --fix`, `pnpm tsc`, `pnpm rolldown -c`.
+Individual commands (manual fallback if needed): `pnpm tsc`, `pnpm eslint --fix`, `pnpm prettier --write .`, `pnpm rolldown -c`.
 
 ## CI
 
 CI has two jobs:
 
-- **Check** — runs `lefthook run pre-commit --all-files` (install, format, lint, type-check, build), then runs the full test suite with `pnpm vitest run`.
+- **Check** — runs `lefthook run pre-commit --all-files` (install, type-check, lint, format, build), then runs the full test suite with `pnpm vitest run`.
 - **Test** — checks out the action itself and runs it on `ubuntu-24.04`, `ubuntu-24.04-arm`, `windows-2025`, `windows-11-arm`, `macos-15`, and `macos-15-intel` to verify the actual action behavior end-to-end.
 
 See `.github/workflows/ci.yaml` for full details.
