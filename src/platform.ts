@@ -2,6 +2,11 @@ import { arch, platform } from "node:os";
 
 export type Platform = "linux" | "darwin" | "win32";
 
+/**
+ * Gets the platform of the current runner.
+ * @returns The platform of the current runner.
+ * @throws If the platform is not supported.
+ */
 export function getPlatform(): Platform {
   const val = platform();
   switch (val) {
@@ -16,6 +21,11 @@ export function getPlatform(): Platform {
 
 export type Arch = "x64" | "arm64";
 
+/**
+ * Gets the arch of the current runner.
+ * @returns The arch of the current runner.
+ * @throws If the arch is not supported.
+ */
 export function getArch(): Arch {
   const val = arch();
   switch (val) {
