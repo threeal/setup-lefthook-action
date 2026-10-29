@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { appendFile, chmod, mkdir, rm, stat } from "node:fs/promises";
+import { access, appendFile, chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import { EOL } from "node:os";
 import { delimiter, join } from "node:path";
 //#region node_modules/.pnpm/ghakit@1.0.0/node_modules/ghakit/dist/exec.js
@@ -71,14 +71,6 @@ function logCommand(command, ...args) {
 	process.stdout.write(`[command]${message}${EOL}`);
 }
 //#endregion
-//#region src/cache.ts
-async function verifyCache(cacheDir) {
-	const stats = await stat(cacheDir, { throwIfNoEntry: false });
-	if (stats === void 0) return false;
-	if (!stats.isDirectory()) throw new Error(`Lefthook cache path is not a directory: ${cacheDir}`);
-	return true;
-}
-//#endregion
 //#region src/lefthook.ts
 const OS_NAMES = {
 	linux: "Linux",
@@ -125,20 +117,16 @@ try {
 	const { platform, arch } = process;
 	const asset = getLefthookAsset(version, platform, arch);
 	const cacheDir = join(getRunnerToolCache(), "lefthook", `${version}-${platform}-${arch}`);
-	let isCached = false;
+	const completeMarker = join(cacheDir, ".complete");
 	try {
-		isCached = await verifyCache(cacheDir);
-	} catch (err) {
-		logError(err);
-		logInfo(`Remove invalid Lefthook cache at ${cacheDir}`);
+		await access(completeMarker);
+		logInfo(`Use cached Lefthook from ${cacheDir}`);
+	} catch {
+		logInfo(`Install Lefthook to ${cacheDir}`);
 		await rm(cacheDir, {
 			recursive: true,
 			force: true
 		});
-	}
-	if (isCached) logInfo(`Use cached Lefthook from ${cacheDir}`);
-	else {
-		logInfo(`Install Lefthook to ${cacheDir}`);
 		await mkdir(cacheDir, { recursive: true });
 		const file = join(cacheDir, asset.fileName);
 		const args = [
@@ -150,6 +138,7 @@ try {
 		logCommand("curl", ...args);
 		await exec("curl", args);
 		await chmod(file, 493);
+		await writeFile(completeMarker, "");
 	}
 	logInfo("Add Lefthook to PATH");
 	await addPath(cacheDir);
