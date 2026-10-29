@@ -1,6 +1,3 @@
-import { getInput } from "ghakit/io";
-import { logInfo } from "ghakit/log";
-
 /**
  * Parses the Lefthook version from the redirect of GitHub's latest release URL.
  *
@@ -25,29 +22,13 @@ export function parseVersionFromRedirectResponse(res: Response): string {
 }
 
 /**
- * Resolves the Lefthook version to install from the `version` input.
- *
- * The input is trimmed first. If it is `latest`, the latest version is fetched
- * from GitHub releases; otherwise it is returned as is.
- * @returns The resolved Lefthook version.
- * @throws If the input is empty.
+ * Fetches the latest Lefthook version from GitHub releases.
+ * @returns The latest Lefthook version.
  */
-export async function resolveVersion(): Promise<string> {
-  const version = getInput("version").trim();
-  switch (version) {
-    case "":
-      throw new Error("version input must not be empty");
-
-    case "latest": {
-      logInfo("Fetch latest Lefthook version");
-      const res = await fetch(
-        "https://github.com/evilmartians/lefthook/releases/latest",
-        { redirect: "manual" },
-      );
-      return parseVersionFromRedirectResponse(res);
-    }
-
-    default:
-      return version;
-  }
+export async function fetchLatestLefthookVersion(): Promise<string> {
+  const res = await fetch(
+    "https://github.com/evilmartians/lefthook/releases/latest",
+    { redirect: "manual" },
+  );
+  return parseVersionFromRedirectResponse(res);
 }
