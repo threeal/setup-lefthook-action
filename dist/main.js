@@ -1,31 +1,7 @@
-import { EOL, arch, platform } from "node:os";
 import { spawn } from "node:child_process";
 import { appendFile, chmod, mkdir, rm, stat } from "node:fs/promises";
+import { EOL } from "node:os";
 import { delimiter, join } from "node:path";
-//#region node_modules/.pnpm/ghakit@1.0.0/node_modules/ghakit/dist/log.js
-function logInfo(message) {
-	process.stdout.write(`${message}${EOL}`);
-}
-function formatAnnotationParams(options) {
-	const params = Object.entries(options).filter(([, v]) => v !== void 0).map(([k, v]) => `${k}=${String(v)}`).join(",");
-	return params ? ` ${params}` : "";
-}
-function logError(err, options) {
-	const message = err instanceof Error ? err.message : String(err);
-	const params = options ? formatAnnotationParams(options) : "";
-	process.stdout.write(`::error${params}::${message}${EOL}`);
-}
-function logCommand(command, ...args) {
-	const message = [command, ...args].join(" ");
-	process.stdout.write(`[command]${message}${EOL}`);
-}
-function beginLogGroup(name) {
-	process.stdout.write(`::group::${name}${EOL}`);
-}
-function endLogGroup() {
-	process.stdout.write(`::endgroup::${EOL}`);
-}
-//#endregion
 //#region node_modules/.pnpm/ghakit@1.0.0/node_modules/ghakit/dist/exec.js
 function exec(command, args, opts) {
 	return new Promise((resolve, reject) => {
@@ -77,64 +53,53 @@ async function addPath(sysPath) {
 	await appendFile(getGitHubPath(), `${sysPath}${EOL}`);
 }
 //#endregion
+//#region node_modules/.pnpm/ghakit@1.0.0/node_modules/ghakit/dist/log.js
+function logInfo(message) {
+	process.stdout.write(`${message}${EOL}`);
+}
+function formatAnnotationParams(options) {
+	const params = Object.entries(options).filter(([, v]) => v !== void 0).map(([k, v]) => `${k}=${String(v)}`).join(",");
+	return params ? ` ${params}` : "";
+}
+function logError(err, options) {
+	const message = err instanceof Error ? err.message : String(err);
+	const params = options ? formatAnnotationParams(options) : "";
+	process.stdout.write(`::error${params}::${message}${EOL}`);
+}
+function logCommand(command, ...args) {
+	const message = [command, ...args].join(" ");
+	process.stdout.write(`[command]${message}${EOL}`);
+}
+//#endregion
 //#region src/cache.ts
 async function verifyCache(cacheDir) {
 	const stats = await stat(cacheDir, { throwIfNoEntry: false });
 	if (stats === void 0) return false;
-	logInfo("Verify Lefthook cache");
-	try {
-		if (!stats.isDirectory()) throw new Error("cache path is not a directory");
-		return true;
-	} catch (err) {
-		logError(err);
-		logInfo("Remove Lefthook cache");
-		await rm(cacheDir, {
-			force: true,
-			recursive: true
-		});
-		return false;
-	}
+	if (!stats.isDirectory()) throw new Error(`Lefthook cache path is not a directory: ${cacheDir}`);
+	return true;
 }
 //#endregion
-//#region src/download.ts
-function toOs(platform) {
-	switch (platform) {
-		case "linux": return "Linux";
-		case "darwin": return "MacOS";
-		case "win32": return "Windows";
-	}
-}
-function toArch(arch) {
-	switch (arch) {
-		case "x64": return "x86_64";
-		case "arm64": return "arm64";
-	}
-}
-function getDownloadComponents({ version, platform, arch }) {
-	return {
-		baseUrl: `https://github.com/evilmartians/lefthook/releases/download/v${version}`,
-		stem: `lefthook_${version}_${toOs(platform)}_${toArch(arch)}`,
-		ext: platform === "win32" ? ".exe" : ""
+//#region src/lefthook.ts
+const OS_NAMES = {
+	linux: "Linux",
+	darwin: "MacOS",
+	win32: "Windows"
+};
+const ARCH_NAMES = {
+	x64: "x86_64",
+	arm64: "arm64"
+};
+function getLefthookAsset(version, platform, arch) {
+	if (platform !== "linux" && platform !== "darwin" && platform !== "win32") throw new Error(`Unsupported platform: ${platform}`);
+	if (arch !== "x64" && arch !== "arm64") throw new Error(`Unsupported arch: ${arch}`);
+	const url = `https://github.com/evilmartians/lefthook/releases/download/v${version}/${`lefthook_${version}_${OS_NAMES[platform]}_${ARCH_NAMES[arch]}`}`;
+	return platform === "win32" ? {
+		url: `${url}.exe`,
+		fileName: "lefthook.exe"
+	} : {
+		url,
+		fileName: "lefthook"
 	};
-}
-//#endregion
-//#region src/platform.ts
-function getPlatform() {
-	const val = platform();
-	switch (val) {
-		case "linux":
-		case "darwin":
-		case "win32": return val;
-		default: throw new Error(`Unsupported platform: ${val}`);
-	}
-}
-function getArch() {
-	const val = arch();
-	switch (val) {
-		case "x64":
-		case "arm64": return val;
-		default: throw new Error(`Unsupported arch: ${val}`);
-	}
 }
 //#endregion
 //#region src/version.ts
@@ -144,58 +109,54 @@ function parseVersionFromRedirectResponse(res) {
 	if (!location) throw new Error("Redirect response is missing the location header");
 	return location.slice(location.lastIndexOf("/") + 1).replace(/^v/, "");
 }
-async function resolveVersion() {
-	const version = getInput("version").trim();
-	switch (version) {
-		case "": throw new Error("version input must not be empty");
-		case "latest":
-			logInfo("Fetch latest Lefthook version");
-			return parseVersionFromRedirectResponse(await fetch("https://github.com/evilmartians/lefthook/releases/latest", { redirect: "manual" }));
-		default: return version;
-	}
+async function fetchLatestLefthookVersion() {
+	return parseVersionFromRedirectResponse(await fetch("https://github.com/evilmartians/lefthook/releases/latest", { redirect: "manual" }));
 }
 //#endregion
-//#region src/action.ts
-async function setupLefthookAction() {
-	const platform = getPlatform();
-	const arch = getArch();
-	const version = await resolveVersion();
+//#region src/main.ts
+try {
+	let version = getInput("version").trim();
+	if (version === "") throw new Error("Version input must not be empty");
+	if (version === "latest") {
+		logInfo("Fetch latest Lefthook version from GitHub releases");
+		version = await fetchLatestLefthookVersion();
+		logInfo(`Found latest Lefthook version ${version}`);
+	}
+	const { platform, arch } = process;
+	const asset = getLefthookAsset(version, platform, arch);
 	const cacheDir = join(getRunnerToolCache(), "lefthook", version);
-	if (await verifyCache(cacheDir)) logInfo(`Use cached Lefthook ${version}`);
+	let isCached = false;
+	try {
+		isCached = await verifyCache(cacheDir);
+	} catch (err) {
+		logError(err);
+		logInfo(`Remove invalid Lefthook cache at ${cacheDir}`);
+		await rm(cacheDir, {
+			recursive: true,
+			force: true
+		});
+	}
+	if (isCached) logInfo(`Use cached Lefthook from ${cacheDir}`);
 	else {
-		beginLogGroup(`Download Lefthook ${version}`);
-		try {
-			logInfo("Create directory");
-			await mkdir(cacheDir, { recursive: true });
-			const { baseUrl, stem, ext } = getDownloadComponents({
-				version,
-				platform,
-				arch
-			});
-			const binPath = join(cacheDir, `lefthook${ext}`);
-			const args = [
-				"-fL",
-				"--output",
-				binPath,
-				`${baseUrl}/${stem}${ext}`
-			];
-			logCommand("curl", ...args);
-			await exec("curl", args);
-			logInfo("Set file permissions");
-			await chmod(binPath, "755");
-		} finally {
-			endLogGroup();
-		}
+		logInfo(`Install Lefthook to ${cacheDir}`);
+		await mkdir(cacheDir, { recursive: true });
+		const file = join(cacheDir, asset.fileName);
+		const args = [
+			"-fsSL",
+			"--output",
+			file,
+			asset.url
+		];
+		logCommand("curl", ...args);
+		await exec("curl", args);
+		await chmod(file, 493);
 	}
 	logInfo("Add Lefthook to PATH");
 	await addPath(cacheDir);
 	await setOutput("version", version);
-}
-//#endregion
-//#region src/main.ts
-await setupLefthookAction().catch((err) => {
+} catch (err) {
 	logError(err);
 	process.exitCode = 1;
-});
+}
 //#endregion
 export {};
