@@ -81,17 +81,21 @@ const ARCH_NAMES = {
 	x64: "x86_64",
 	arm64: "arm64"
 };
-function getLefthookAsset(version, platform, arch) {
+async function findLefthookAsset(version, platform, arch) {
 	if (platform !== "linux" && platform !== "darwin" && platform !== "win32") throw new Error(`Unsupported platform: ${platform}`);
 	if (arch !== "x64" && arch !== "arm64") throw new Error(`Unsupported arch: ${arch}`);
 	const url = `https://github.com/evilmartians/lefthook/releases/download/v${version}/${`lefthook_${version}_${OS_NAMES[platform]}_${ARCH_NAMES[arch]}`}`;
-	return platform === "win32" ? {
+	const asset = platform === "win32" ? {
 		url: `${url}.exe`,
 		fileName: "lefthook.exe"
 	} : {
 		url,
 		fileName: "lefthook"
 	};
+	const res = await fetch(asset.url, { method: "HEAD" });
+	if (res.status === 404) throw new Error(`Lefthook does not provide a build of version ${version} for ${platform}/${arch}`);
+	if (!res.ok) throw new Error(`Failed to find Lefthook build at ${asset.url}: ${res.statusText}`);
+	return asset;
 }
 //#endregion
 //#region src/version.ts
@@ -115,13 +119,14 @@ try {
 		logInfo(`Found latest Lefthook version ${version}`);
 	}
 	const { platform, arch } = process;
-	const asset = getLefthookAsset(version, platform, arch);
 	const cacheDir = join(getRunnerToolCache(), "lefthook", `${version}-${platform}-${arch}`);
 	const completeMarker = join(cacheDir, ".complete");
 	try {
 		await access(completeMarker);
 		logInfo(`Use cached Lefthook from ${cacheDir}`);
 	} catch {
+		logInfo(`Find Lefthook build for ${platform}/${arch} in GitHub releases`);
+		const asset = await findLefthookAsset(version, platform, arch);
 		logInfo(`Install Lefthook to ${cacheDir}`);
 		await rm(cacheDir, {
 			recursive: true,
