@@ -23,7 +23,11 @@ try {
   const { platform, arch } = process;
   const asset = getLefthookAsset(version, platform, arch);
 
-  const cacheDir = join(getRunnerToolCache(), "lefthook", version);
+  const cacheDir = join(
+    getRunnerToolCache(),
+    "lefthook",
+    `${version}-${platform}-${arch}`,
+  );
   let isCached = false;
   try {
     isCached = await verifyCache(cacheDir);
