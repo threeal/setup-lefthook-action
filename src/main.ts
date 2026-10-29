@@ -2,9 +2,8 @@ import { exec } from "ghakit/exec";
 import { addPath, getInput, setOutput } from "ghakit/io";
 import { logCommand, logError, logInfo } from "ghakit/log";
 import { getRunnerToolCache } from "ghakit/vars";
-import { chmod, mkdir, rm } from "node:fs/promises";
+import { access, chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { verifyCache } from "./cache.js";
 import { getLefthookAsset } from "./lefthook.js";
 import { fetchLatestLefthookVersion } from "./version.js";
 
@@ -28,19 +27,15 @@ try {
     "lefthook",
     `${version}-${platform}-${arch}`,
   );
-  let isCached = false;
-  try {
-    isCached = await verifyCache(cacheDir);
-  } catch (err) {
-    logError(err);
-    logInfo(`Remove invalid Lefthook cache at ${cacheDir}`);
-    await rm(cacheDir, { recursive: true, force: true });
-  }
 
-  if (isCached) {
+  const completeMarker = join(cacheDir, ".complete");
+  try {
+    await access(completeMarker);
     logInfo(`Use cached Lefthook from ${cacheDir}`);
-  } else {
+  } catch {
     logInfo(`Install Lefthook to ${cacheDir}`);
+    // Clears anything left by a previous install that didn't complete.
+    await rm(cacheDir, { recursive: true, force: true });
     await mkdir(cacheDir, { recursive: true });
 
     const file = join(cacheDir, asset.fileName);
@@ -49,6 +44,8 @@ try {
     await exec("curl", args);
 
     await chmod(file, 0o755);
+
+    await writeFile(completeMarker, "");
   }
 
   logInfo("Add Lefthook to PATH");
