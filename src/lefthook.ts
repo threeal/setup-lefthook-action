@@ -1,3 +1,37 @@
+const RELEASES_URL = "https://github.com/evilmartians/lefthook/releases";
+
+/**
+ * Parses the Lefthook version from the redirect of GitHub's latest release URL.
+ *
+ * The version is taken from the last segment of the `location` header, with
+ * its `v` prefix removed.
+ * @param res - The unfollowed response from the latest release URL.
+ * @returns The latest Lefthook version.
+ * @throws If the response is not a 302 redirect or has no `location` header.
+ */
+export function parseVersionFromRedirectResponse(res: Response): string {
+  if (res.status !== 302) {
+    throw new Error(
+      `Expected 302 redirect, but got ${res.status.toString()} (${res.statusText})`,
+    );
+  }
+  const location = res.headers.get("location");
+  if (!location) {
+    throw new Error("Redirect response is missing the location header");
+  }
+  const tag = location.slice(location.lastIndexOf("/") + 1);
+  return tag.replace(/^v/, "");
+}
+
+/**
+ * Fetches the latest Lefthook version from GitHub releases.
+ * @returns The latest Lefthook version.
+ */
+export async function fetchLatestLefthookVersion(): Promise<string> {
+  const res = await fetch(`${RELEASES_URL}/latest`, { redirect: "manual" });
+  return parseVersionFromRedirectResponse(res);
+}
+
 /**
  * A Lefthook release asset, which is the Lefthook executable itself.
  *
@@ -44,7 +78,7 @@ export async function findLefthookAsset(
   }
 
   const name = `lefthook_${version}_${OS_NAMES[platform]}_${ARCH_NAMES[arch]}`;
-  const url = `https://github.com/evilmartians/lefthook/releases/download/v${version}/${name}`;
+  const url = `${RELEASES_URL}/download/v${version}/${name}`;
   const asset: LefthookAsset =
     platform === "win32"
       ? { type: "exe", url: `${url}.exe`, fileName: "lefthook.exe" }
