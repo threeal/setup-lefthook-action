@@ -44,7 +44,9 @@ try {
     logCommand("curl", ...args);
     await exec("curl", args);
 
-    await chmod(file, 0o755);
+    if (asset.type === "binary") {
+      await chmod(file, 0o755);
+    }
 
     await writeFile(completeMarker, "");
   }

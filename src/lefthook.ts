@@ -1,9 +1,12 @@
 /**
  * A Lefthook release asset, which is the Lefthook executable itself.
  *
- * The `fileName` is what the download is saved as.
+ * Only a `binary` needs to be made executable, while an `exe` is executable by
+ * its file extension on Windows. The `fileName` is what the download is saved
+ * as.
  */
 export interface LefthookAsset {
+  type: "binary" | "exe";
   url: string;
   fileName: string;
 }
@@ -44,8 +47,8 @@ export async function findLefthookAsset(
   const url = `https://github.com/evilmartians/lefthook/releases/download/v${version}/${name}`;
   const asset: LefthookAsset =
     platform === "win32"
-      ? { url: `${url}.exe`, fileName: "lefthook.exe" }
-      : { url, fileName: "lefthook" };
+      ? { type: "exe", url: `${url}.exe`, fileName: "lefthook.exe" }
+      : { type: "binary", url, fileName: "lefthook" };
 
   const res = await fetch(asset.url, { method: "HEAD" });
   if (res.status === 404) {
