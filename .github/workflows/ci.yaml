@@ -54,10 +54,10 @@ jobs:
       - name: Verify latest Lefthook version
         shell: bash
         run: |
-          test "${{ steps.setup-lefthook.outputs.version }}" != "2.1.0"
-          version="$(lefthook --version)"
+          version="$(lefthook version)"
           echo "$version"
-          test "$version" != "lefthook version 2.1.0 "
+          test "$version" != "2.1.0"
+          test "$version" = "${{ steps.setup-lefthook.outputs.version }}"
 
       - name: Setup Lefthook with version input
         id: setup-lefthook-versioned
@@ -68,10 +68,10 @@ jobs:
       - name: Verify specified Lefthook version
         shell: bash
         run: |
-          test "${{ steps.setup-lefthook-versioned.outputs.version }}" = "2.1.0"
-          version="$(lefthook --version)"
+          version="$(lefthook version)"
           echo "$version"
-          test "$version" = "lefthook version 2.1.0 "
+          test "$version" = "2.1.0"
+          test "$version" = "${{ steps.setup-lefthook-versioned.outputs.version }}"
 
       - name: Setup Lefthook from cache
         id: setup-lefthook-cached
@@ -82,7 +82,7 @@ jobs:
       - name: Verify cached Lefthook version
         shell: bash
         run: |
-          test "${{ steps.setup-lefthook-cached.outputs.version }}" != "2.1.0"
-          version="$(lefthook --version)"
+          version="$(lefthook version)"
           echo "$version"
-          test "$version" != "lefthook version 2.1.0 "
+          test "$version" != "2.1.0"
+          test "$version" = "${{ steps.setup-lefthook-cached.outputs.version }}"
