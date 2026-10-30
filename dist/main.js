@@ -116,7 +116,10 @@ async function findLefthookAsset(version, platform, arch) {
 //#region src/main.ts
 try {
 	let version = getInput("version").trim();
-	if (version === "") throw new Error("Version input must not be empty");
+	if (version === "") {
+		logInfo("No version specified, use latest");
+		version = "latest";
+	}
 	if (version === "latest") {
 		logInfo("Fetch latest Lefthook version from GitHub releases");
 		version = await fetchLatestLefthookVersion();
