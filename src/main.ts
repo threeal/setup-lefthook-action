@@ -9,7 +9,8 @@ import { fetchLatestLefthookVersion, findLefthookAsset } from "./lefthook.js";
 try {
   let version = getInput("version").trim();
   if (version === "") {
-    throw new Error("Version input must not be empty");
+    logInfo("No version specified, use latest");
+    version = "latest";
   }
 
   if (version === "latest") {
