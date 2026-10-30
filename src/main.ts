@@ -4,7 +4,7 @@ import { logCommand, logError, logInfo } from "ghakit/log";
 import { getRunnerToolCache } from "ghakit/vars";
 import { access, chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { getLefthookAsset } from "./lefthook.js";
+import { findLefthookAsset } from "./lefthook.js";
 import { fetchLatestLefthookVersion } from "./version.js";
 
 try {
@@ -20,8 +20,6 @@ try {
   }
 
   const { platform, arch } = process;
-  const asset = getLefthookAsset(version, platform, arch);
-
   const cacheDir = join(
     getRunnerToolCache(),
     "lefthook",
@@ -33,6 +31,9 @@ try {
     await access(completeMarker);
     logInfo(`Use cached Lefthook from ${cacheDir}`);
   } catch {
+    logInfo(`Find Lefthook build for ${platform}/${arch} in GitHub releases`);
+    const asset = await findLefthookAsset(version, platform, arch);
+
     logInfo(`Install Lefthook to ${cacheDir}`);
     // Clears anything left by a previous install that didn't complete.
     await rm(cacheDir, { recursive: true, force: true });
