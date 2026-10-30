@@ -6,7 +6,7 @@ branding:
   color: red
 inputs:
   version:
-    description: The version of Lefthook to install. Defaults to the latest version.
+    description: The Lefthook version to install, or `latest` for the newest release.
     default: latest
 outputs:
   version:
