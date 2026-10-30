@@ -77,7 +77,9 @@ function parseVersionFromRedirectResponse(res) {
 	if (res.status !== 302) throw new Error(`Expected 302 redirect, but got ${res.status.toString()} (${res.statusText})`);
 	const location = res.headers.get("location");
 	if (!location) throw new Error("Redirect response is missing the location header");
-	return location.slice(location.lastIndexOf("/") + 1).replace(/^v/, "");
+	const match = /\/releases\/tag\/v([^/]+)$/.exec(location);
+	if (match === null) throw new Error(`Unexpected redirect location: ${location}`);
+	return match[1];
 }
 async function fetchLatestLefthookVersion() {
 	return parseVersionFromRedirectResponse(await fetch(`${RELEASES_URL}/latest`, { redirect: "manual" }));
