@@ -32,14 +32,14 @@ describe("findLefthookAsset", { concurrent: true }, () => {
   );
 
   test(
-    "names the executable for the platform",
+    "returns the executable type and name for the platform",
     { timeout: 30000 },
     async () => {
       const asset = await findLefthookAsset("2.1.0", "linux", "x64");
-      expect(asset.fileName).toBe("lefthook");
+      expect(asset).toMatchObject({ type: "binary", fileName: "lefthook" });
 
       const winAsset = await findLefthookAsset("2.1.0", "win32", "x64");
-      expect(winAsset.fileName).toBe("lefthook.exe");
+      expect(winAsset).toMatchObject({ type: "exe", fileName: "lefthook.exe" });
     },
   );
 

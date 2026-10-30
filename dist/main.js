@@ -86,9 +86,11 @@ async function findLefthookAsset(version, platform, arch) {
 	if (arch !== "x64" && arch !== "arm64") throw new Error(`Unsupported arch: ${arch}`);
 	const url = `https://github.com/evilmartians/lefthook/releases/download/v${version}/${`lefthook_${version}_${OS_NAMES[platform]}_${ARCH_NAMES[arch]}`}`;
 	const asset = platform === "win32" ? {
+		type: "exe",
 		url: `${url}.exe`,
 		fileName: "lefthook.exe"
 	} : {
+		type: "binary",
 		url,
 		fileName: "lefthook"
 	};
@@ -142,7 +144,7 @@ try {
 		];
 		logCommand("curl", ...args);
 		await exec("curl", args);
-		await chmod(file, 493);
+		if (asset.type === "binary") await chmod(file, 493);
 		await writeFile(completeMarker, "");
 	}
 	logInfo("Add Lefthook to PATH");
