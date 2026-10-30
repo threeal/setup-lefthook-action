@@ -72,6 +72,16 @@ function logCommand(command, ...args) {
 }
 //#endregion
 //#region src/lefthook.ts
+const RELEASES_URL = "https://github.com/evilmartians/lefthook/releases";
+function parseVersionFromRedirectResponse(res) {
+	if (res.status !== 302) throw new Error(`Expected 302 redirect, but got ${res.status.toString()} (${res.statusText})`);
+	const location = res.headers.get("location");
+	if (!location) throw new Error("Redirect response is missing the location header");
+	return location.slice(location.lastIndexOf("/") + 1).replace(/^v/, "");
+}
+async function fetchLatestLefthookVersion() {
+	return parseVersionFromRedirectResponse(await fetch(`${RELEASES_URL}/latest`, { redirect: "manual" }));
+}
 const OS_NAMES = {
 	linux: "Linux",
 	darwin: "MacOS",
@@ -84,7 +94,8 @@ const ARCH_NAMES = {
 async function findLefthookAsset(version, platform, arch) {
 	if (platform !== "linux" && platform !== "darwin" && platform !== "win32") throw new Error(`Unsupported platform: ${platform}`);
 	if (arch !== "x64" && arch !== "arm64") throw new Error(`Unsupported arch: ${arch}`);
-	const url = `https://github.com/evilmartians/lefthook/releases/download/v${version}/${`lefthook_${version}_${OS_NAMES[platform]}_${ARCH_NAMES[arch]}`}`;
+	const name = `lefthook_${version}_${OS_NAMES[platform]}_${ARCH_NAMES[arch]}`;
+	const url = `${RELEASES_URL}/download/v${version}/${name}`;
 	const asset = platform === "win32" ? {
 		type: "exe",
 		url: `${url}.exe`,
@@ -98,17 +109,6 @@ async function findLefthookAsset(version, platform, arch) {
 	if (res.status === 404) throw new Error(`Lefthook does not provide a build of version ${version} for ${platform}/${arch}`);
 	if (!res.ok) throw new Error(`Failed to find Lefthook build at ${asset.url}: ${res.statusText}`);
 	return asset;
-}
-//#endregion
-//#region src/version.ts
-function parseVersionFromRedirectResponse(res) {
-	if (res.status !== 302) throw new Error(`Expected 302 redirect, but got ${res.status.toString()} (${res.statusText})`);
-	const location = res.headers.get("location");
-	if (!location) throw new Error("Redirect response is missing the location header");
-	return location.slice(location.lastIndexOf("/") + 1).replace(/^v/, "");
-}
-async function fetchLatestLefthookVersion() {
-	return parseVersionFromRedirectResponse(await fetch("https://github.com/evilmartians/lefthook/releases/latest", { redirect: "manual" }));
 }
 //#endregion
 //#region src/main.ts

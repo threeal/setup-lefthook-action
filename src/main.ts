@@ -4,8 +4,7 @@ import { logCommand, logError, logInfo } from "ghakit/log";
 import { getRunnerToolCache } from "ghakit/vars";
 import { access, chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { findLefthookAsset } from "./lefthook.js";
-import { fetchLatestLefthookVersion } from "./version.js";
+import { fetchLatestLefthookVersion, findLefthookAsset } from "./lefthook.js";
 
 try {
   let version = getInput("version").trim();
