@@ -6,7 +6,7 @@ A GitHub Action that downloads and sets up [Lefthook](https://lefthook.dev/) on 
 
 ```yaml
 - name: Setup Lefthook
-  uses: threeal/setup-lefthook-action@v1.0.0
+  uses: threeal/setup-lefthook-action@v1.1.0
 ```
 
 ## Inputs
@@ -25,9 +25,9 @@ A GitHub Action that downloads and sets up [Lefthook](https://lefthook.dev/) on 
 
 ```yaml
 - name: Setup Lefthook
-  uses: threeal/setup-lefthook-action@v1.0.0
+  uses: threeal/setup-lefthook-action@v1.1.0
   with:
-    version: 2.1.0
+    version: 2.2.2
 
 - name: Run pre-commit hooks
   run: lefthook run pre-commit --all-files
