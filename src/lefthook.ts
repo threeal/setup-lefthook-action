@@ -3,11 +3,12 @@ const RELEASES_URL = "https://github.com/evilmartians/lefthook/releases";
 /**
  * Parses the Lefthook version from the redirect of GitHub's latest release URL.
  *
- * The version is taken from the last segment of the `location` header, with
- * its `v` prefix removed.
+ * The version is taken from the `location` header, which must end in a
+ * `/releases/tag/v<version>` path.
  * @param res - The unfollowed response from the latest release URL.
  * @returns The latest Lefthook version.
- * @throws If the response is not a 302 redirect or has no `location` header.
+ * @throws If the response is not a 302 redirect, has no `location` header, or
+ * redirects anywhere other than a release tag.
  */
 export function parseVersionFromRedirectResponse(res: Response): string {
   if (res.status !== 302) {
@@ -19,8 +20,11 @@ export function parseVersionFromRedirectResponse(res: Response): string {
   if (!location) {
     throw new Error("Redirect response is missing the location header");
   }
-  const tag = location.slice(location.lastIndexOf("/") + 1);
-  return tag.replace(/^v/, "");
+  const match = /\/releases\/tag\/v([^/]+)$/.exec(location);
+  if (match === null) {
+    throw new Error(`Unexpected redirect location: ${location}`);
+  }
+  return match[1];
 }
 
 /**

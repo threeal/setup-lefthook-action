@@ -30,6 +30,18 @@ describe("parseVersionFromRedirectResponse", () => {
       "Redirect response is missing the location header",
     );
   });
+
+  test("throws when location is not a release tag", () => {
+    const res = new Response(null, {
+      status: 302,
+      headers: {
+        location: "https://github.com/evilmartians/lefthook/releases",
+      },
+    });
+    expect(() => parseVersionFromRedirectResponse(res)).toThrow(
+      "Unexpected redirect location: https://github.com/evilmartians/lefthook/releases",
+    );
+  });
 });
 
 describe("fetchLatestLefthookVersion", { concurrent: true }, () => {
