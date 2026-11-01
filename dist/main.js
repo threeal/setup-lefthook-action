@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { access, appendFile, chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import { EOL } from "node:os";
 import { delimiter, join } from "node:path";
-//#region node_modules/.pnpm/ghakit@1.0.0/node_modules/ghakit/dist/exec.js
+// node_modules/.pnpm/ghakit@1.0.0/node_modules/ghakit/dist/exec.js
 function exec(command, args, opts) {
 	return new Promise((resolve, reject) => {
 		const stdoutMode = opts?.stdout ?? "inherit";
@@ -29,8 +29,7 @@ function exec(command, args, opts) {
 		});
 	});
 }
-//#endregion
-//#region node_modules/.pnpm/ghakit@1.0.0/node_modules/ghakit/dist/vars.js
+// node_modules/.pnpm/ghakit@1.0.0/node_modules/ghakit/dist/vars.js
 function getGitHubOutput() {
 	return process.env.GITHUB_OUTPUT ?? "";
 }
@@ -40,8 +39,7 @@ function getGitHubPath() {
 function getRunnerToolCache() {
 	return process.env.RUNNER_TOOL_CACHE ?? "";
 }
-//#endregion
-//#region node_modules/.pnpm/ghakit@1.0.0/node_modules/ghakit/dist/io.js
+// node_modules/.pnpm/ghakit@1.0.0/node_modules/ghakit/dist/io.js
 function getInput(name) {
 	return process.env[`INPUT_${name.toUpperCase()}`] ?? "";
 }
@@ -52,8 +50,7 @@ async function addPath(sysPath) {
 	process.env.PATH = process.env.PATH !== void 0 ? `${sysPath}${delimiter}${process.env.PATH}` : sysPath;
 	await appendFile(getGitHubPath(), `${sysPath}${EOL}`);
 }
-//#endregion
-//#region node_modules/.pnpm/ghakit@1.0.0/node_modules/ghakit/dist/log.js
+// node_modules/.pnpm/ghakit@1.0.0/node_modules/ghakit/dist/log.js
 function logInfo(message) {
 	process.stdout.write(`${message}${EOL}`);
 }
@@ -70,8 +67,7 @@ function logCommand(command, ...args) {
 	const message = [command, ...args].join(" ");
 	process.stdout.write(`[command]${message}${EOL}`);
 }
-//#endregion
-//#region src/lefthook.ts
+// src/lefthook.ts
 const RELEASES_URL = "https://github.com/evilmartians/lefthook/releases";
 function parseVersionFromRedirectResponse(res) {
 	if (res.status !== 302) throw new Error(`Expected 302 redirect, but got ${res.status.toString()} (${res.statusText})`);
@@ -112,8 +108,7 @@ async function findLefthookAsset(version, platform, arch) {
 	if (!res.ok) throw new Error(`Failed to find Lefthook build at ${asset.url}: ${res.statusText}`);
 	return asset;
 }
-//#endregion
-//#region src/main.ts
+// src/main.ts
 try {
 	let version = getInput("version").trim();
 	if (version === "") {
@@ -159,5 +154,4 @@ try {
 	logError(err);
 	process.exitCode = 1;
 }
-//#endregion
 export {};
