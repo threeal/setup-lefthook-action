@@ -54,7 +54,7 @@ try {
   logInfo("Add Lefthook to PATH");
   await addPath(cacheDir);
   await setOutput("version", version);
-} catch (err: unknown) {
+} catch (err) {
   logError(err);
   process.exitCode = 1;
 }
