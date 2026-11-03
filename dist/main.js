@@ -149,10 +149,6 @@ try {
 	}
 	logInfo("Add Lefthook to PATH");
 	await addPath(cacheDir);
-	logInfo("Check that Lefthook runs");
-	const { stdout } = await exec("lefthook", ["version"], { stdout: "capture" });
-	const installedVersion = stdout.trim();
-	if (installedVersion !== version) throw new Error(`Expected Lefthook version ${version}, but got ${installedVersion}`);
 	await setOutput("version", version);
 } catch (err) {
 	logError(err);
